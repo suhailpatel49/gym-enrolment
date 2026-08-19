@@ -5,18 +5,20 @@ namespace App\Documents;
 use App\Models\Enrollment;
 use Dompdf\Dompdf;
 use Dompdf\Options;
-use Illuminate\Http\Response;
 use Illuminate\Support\Str;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class EnrollmentConfirmationPdf
 {
-    public function download(Enrollment $enrollment): Response
+    public function download(Enrollment $enrollment): StreamedResponse
     {
         $fileName = Str::slug($enrollment->reference_code.'-'.$enrollment->full_name).'.pdf';
+        $contents = $this->render($enrollment);
 
-        return response($this->render($enrollment), 200, [
+        return response()->streamDownload(static function () use ($contents): void {
+            echo $contents;
+        }, $fileName, [
             'Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'attachment; filename="'.$fileName.'"',
         ]);
     }
 
