@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Enrollments\Schemas;
 
+use App\Models\Enrollment;
 use Filament\Infolists\Components\IconEntry;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Schema;
@@ -44,8 +45,9 @@ class EnrollmentInfolist
                 TextEntry::make('payment_mode')
                     ->visible($isAdmin),
                 TextEntry::make('amount_paid')
+                    ->label('Amount paid')
                     ->money('INR')
-                    ->visible($isAdmin),
+                    ->visible(fn (Enrollment $record): bool => $isAdmin || $record->has_balance),
                 TextEntry::make('membership_start_date')
                     ->date('d M Y'),
                 TextEntry::make('membership_end_date')
@@ -54,9 +56,10 @@ class EnrollmentInfolist
                     ->label('Balance due')
                     ->boolean(),
                 TextEntry::make('remaining_balance')
+                    ->label('Remaining balance')
                     ->money('INR')
                     ->placeholder('-')
-                    ->visible($isAdmin),
+                    ->visible(fn (Enrollment $record): bool => $isAdmin || $record->has_balance),
                 TextEntry::make('balance_due_date')
                     ->label('Balance due date')
                     ->date('d M Y')
