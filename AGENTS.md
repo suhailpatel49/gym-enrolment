@@ -160,3 +160,19 @@ This project has domain-specific skills available in `**/skills/**`. You MUST ac
 - To filter on a particular test name: `php artisan test --compact --filter=testName` (recommended after making a change to a related file).
 
 </laravel-boost-guidelines>
+
+<!-- hermes-team-context:v1 -->
+## Hermes Team Context
+- Central context: `/root/.hermes/team-context/gym-enrolment.md`.
+- Canonical source: `/srv/agent-repos/gym-enrolment`; live checkout `/srv/www/gym-enrolment` is read-only for coding tasks.
+- Revalidate `origin/main` and record the exact base commit before creating an isolated feature worktree.
+- Implementation is through Codex CLI `gpt-5.6-sol`, medium reasoning. Follow the Laravel Boost guidance above, project `.ai/rules` when present, strict TDD, focused PHPUnit and asset-build checks.
+- Never read `.env`, run setup or shared migration scripts, modify live files, push, merge, deploy or restart services from an implementation card.
+- Keep `push.default=nothing` on the canonical anchor.
+
+<!-- hermes-staging-policy:v1 -->
+## Staging and deployment-document policy
+- The remote default is `origin/main`. Before every coding task, fetch and explicitly revalidate that remote ref and record its full SHA. Create the unique feature branch/worktree from that exact remote-default commit, never from local or remote `staging`.
+- `staging` is the local integration target. Do not commit or push directly to protected refs (`main`, `master`, `version-12`, `production`, `prod`); the shared pre-push hook must remain enabled.
+- Every coding feature branch must contain a unique `.hermes/deployments/<task-id>-<slug>.md` based on `/root/.hermes/team-context/DEPLOYMENT_REQUIREMENTS_TEMPLATE.md`. It is mandatory even when `production_changes_required: no`; list environment variable names only, never values.
+- Implementation commits and the deployment-requirements document travel together through Reviewer and QA. Merge/push/promotion/deployment remain separate approval-gated operations.
