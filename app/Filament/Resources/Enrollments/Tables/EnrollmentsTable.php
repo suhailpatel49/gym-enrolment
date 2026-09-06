@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Enrollments\Tables;
 
+use App\Filament\Resources\Enrollments\Actions\ApproveEnrollmentAction;
 use App\Filament\Resources\Enrollments\Actions\DownloadConfirmationAction;
 use App\Filament\Resources\Enrollments\Actions\MarkBalancePaidAction;
 use App\Filament\Resources\Enrollments\Actions\SendConfirmationEmailAction;
@@ -24,6 +25,11 @@ class EnrollmentsTable
 
         return $table
             ->columns([
+                TextColumn::make('approval_status')
+                    ->label('Approval status')
+                    ->badge()
+                    ->formatStateUsing(fn (string $state): string => ucfirst($state))
+                    ->color(fn (string $state): string => $state === 'pending' ? 'warning' : 'success'),
                 TextColumn::make('reference_code')
                     ->label('Reference')
                     ->copyable()
@@ -77,6 +83,9 @@ class EnrollmentsTable
                     ->sortable(),
             ])
             ->filters([
+                SelectFilter::make('approval_status')
+                    ->label('Approval status')
+                    ->options(['pending' => 'Pending', 'approved' => 'Approved']),
                 SelectFilter::make('membership_status')
                     ->label('Membership status')
                     ->options([
@@ -88,6 +97,10 @@ class EnrollmentsTable
                     ])
                     ->query(function (Builder $query, array $data): Builder {
                         $status = $data['value'] ?? null;
+
+                        if (filled($status)) {
+                            $query->where('approval_status', 'approved');
+                        }
 
                         return match ($status) {
                             'active' => $query
@@ -139,6 +152,10 @@ class EnrollmentsTable
                     ])
                     ->query(function (Builder $query, array $data): Builder {
                         $status = $data['value'] ?? null;
+
+                        if (filled($status)) {
+                            $query->where('approval_status', 'approved');
+                        }
 
                         return match ($status) {
                             'outstanding' => $query
@@ -225,6 +242,7 @@ class EnrollmentsTable
             ->filtersFormColumns(2)
             ->recordActions([
                 ViewAction::make(),
+                ApproveEnrollmentAction::make(),
                 DownloadConfirmationAction::make(),
                 SendConfirmationEmailAction::make(),
                 MarkBalancePaidAction::make(),

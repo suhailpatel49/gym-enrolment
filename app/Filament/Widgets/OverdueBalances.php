@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Builder;
 
 class OverdueBalances extends TableWidget
 {
-    protected static ?int $sort = 2;
+    protected static ?int $sort = 3;
 
     protected int|string|array $columnSpan = 'full';
 
@@ -22,6 +22,7 @@ class OverdueBalances extends TableWidget
             ->heading('Overdue balances')
             ->description('Members with an unpaid balance past its due date.')
             ->query(fn (): Builder => Enrollment::query()
+                ->where('approval_status', 'approved')
                 ->where('has_balance', true)
                 ->where('remaining_balance', '>', 0)
                 ->whereDate('balance_due_date', '<', today())
@@ -34,10 +35,12 @@ class OverdueBalances extends TableWidget
                 TextColumn::make('amount_paid')
                     ->label('Amount paid')
                     ->money('INR')
+                    ->visible(fn (): bool => auth()->user()?->isAdmin() ?? false)
                     ->weight('bold'),
                 TextColumn::make('remaining_balance')
                     ->label('Remaining balance')
                     ->money('INR')
+                    ->visible(fn (): bool => auth()->user()?->isAdmin() ?? false)
                     ->color('danger')
                     ->weight('bold'),
                 TextColumn::make('balance_due_date')
@@ -50,7 +53,8 @@ class OverdueBalances extends TableWidget
                     ->color('danger'),
                 TextColumn::make('mobile_number')
                     ->label('Mobile')
-                    ->searchable(),
+                    ->searchable(fn (): bool => auth()->user()?->isAdmin() ?? false)
+                    ->visible(fn (): bool => auth()->user()?->isAdmin() ?? false),
             ])
             ->recordActions([
                 MarkBalancePaidAction::make(),

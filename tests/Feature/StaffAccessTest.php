@@ -96,10 +96,10 @@ class StaffAccessTest extends TestCase
             ->assertDontSee('Private home address')
             ->assertDontSee('7777766666')
             ->assertDontSee('Private bank transfer')
-            ->assertSee('Amount paid')
-            ->assertSee('12,345.00')
-            ->assertSee('Remaining balance')
-            ->assertSee('6,789.00')
+            ->assertDontSee('Amount paid')
+            ->assertDontSee('12,345.00')
+            ->assertDontSee('Remaining balance')
+            ->assertDontSee('6,789.00')
             ->assertSee(today()->subDays(5)->format('d M Y'))
             ->assertDontSee('Download confirmation')
             ->assertDontSee('Send confirmation again')
@@ -130,7 +130,7 @@ class StaffAccessTest extends TestCase
             ->get('/admin')
             ->assertOk()
             ->assertSee('Membership overview')
-            ->assertSee('Monitor membership activity and upcoming renewals.')
+            ->assertSee('Monitor pending review, membership activity, and upcoming renewals.')
             ->assertDontSee('Amount recorded as paid')
             ->assertDontSee('Outstanding balance');
 
@@ -138,11 +138,11 @@ class StaffAccessTest extends TestCase
             ->test(OverdueBalances::class)
             ->assertCanSeeTableRecords([$enrollment])
             ->assertTableColumnVisible('full_name')
-            ->assertTableColumnVisible('amount_paid')
-            ->assertTableColumnVisible('remaining_balance')
+            ->assertTableColumnHidden('amount_paid')
+            ->assertTableColumnHidden('remaining_balance')
             ->assertTableColumnVisible('balance_due_date')
             ->assertTableColumnVisible('days_overdue')
-            ->assertTableColumnVisible('mobile_number')
-            ->assertSee('9888877777');
+            ->assertTableColumnHidden('mobile_number')
+            ->assertDontSee('9888877777');
     }
 }

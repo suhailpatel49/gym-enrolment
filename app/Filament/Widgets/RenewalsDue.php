@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Builder;
 
 class RenewalsDue extends TableWidget
 {
-    protected static ?int $sort = 3;
+    protected static ?int $sort = 4;
 
     protected int|string|array $columnSpan = 'full';
 
@@ -23,6 +23,7 @@ class RenewalsDue extends TableWidget
             ->heading('Renewals due')
             ->description('Active memberships ending within the next 30 days.')
             ->query(fn (): Builder => Enrollment::query()
+                ->where('approval_status', 'approved')
                 ->whereDate('membership_start_date', '<=', today())
                 ->whereBetween('membership_end_date', [today(), today()->addDays(30)])
                 ->orderBy('membership_end_date'))

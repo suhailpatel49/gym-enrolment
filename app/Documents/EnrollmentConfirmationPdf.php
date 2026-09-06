@@ -24,6 +24,8 @@ class EnrollmentConfirmationPdf
 
     public function render(Enrollment $enrollment): string
     {
+        abort_unless($enrollment->approval_status === 'approved', 403);
+
         $options = new Options;
         $options->set('defaultFont', 'DejaVu Sans');
         $options->set('isRemoteEnabled', false);
