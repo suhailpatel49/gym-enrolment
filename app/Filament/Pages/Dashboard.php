@@ -11,10 +11,10 @@ class Dashboard extends BaseDashboard
     public function getSubheading(): ?string
     {
         if (auth()->user()?->isAdmin()) {
-            return 'Monitor pending review, memberships, collections, balances, and upcoming renewals.';
+            return 'Monitor pending review, personal training, memberships, collections, balances, and renewals.';
         }
 
-        return 'Monitor pending review, membership activity, and upcoming renewals.';
+        return 'Monitor pending review, personal training, memberships, and renewals.';
     }
 
     public function getColumns(): int|array

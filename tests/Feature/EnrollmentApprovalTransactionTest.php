@@ -3,9 +3,11 @@
 namespace Tests\Feature;
 
 use App\Models\Enrollment;
+use App\Models\PersonalTrainingMember;
 use App\Models\User;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 class EnrollmentApprovalTransactionTest extends TestCase
@@ -69,6 +71,27 @@ class EnrollmentApprovalTransactionTest extends TestCase
         $attributes['reference_code'] .= '-import';
         $importId = DB::table('enrollments')->insertGetId($attributes);
         $this->assertSame('approved', Enrollment::findOrFail($importId)->approval_status);
+    }
+
+    public function test_combined_release_migrations_roll_back_and_reapply_in_dependency_order(): void
+    {
+        PersonalTrainingMember::factory()->create();
+        $this->artisan('migrate:rollback', [
+            '--database' => 'approval_test',
+            '--step' => 3,
+            '--no-interaction' => true,
+        ])->assertSuccessful();
+
+        $this->assertFalse(Schema::hasColumn('enrollments', 'approval_status'));
+        $this->assertFalse(Schema::hasTable('personal_training_members'));
+        $this->assertFalse(Schema::hasTable('trainers'));
+        $this->assertTrue(Schema::hasTable('enrollments'));
+        $this->assertTrue(Schema::hasTable('users'));
+
+        $this->artisan('migrate', ['--database' => 'approval_test', '--no-interaction' => true])->assertSuccessful();
+        $this->assertTrue(Schema::hasColumn('enrollments', 'approval_status'));
+        $this->assertTrue(Schema::hasTable('personal_training_members'));
+        $this->assertTrue(Schema::hasTable('trainers'));
     }
 
     public function test_deleting_an_approver_keeps_membership_and_approval_time(): void

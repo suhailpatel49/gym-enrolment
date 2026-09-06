@@ -7,6 +7,7 @@ use App\Filament\Resources\Enrollments\EnrollmentResource;
 use App\Filament\Widgets\EnrollmentStats;
 use App\Filament\Widgets\OverdueBalances;
 use App\Filament\Widgets\PendingApprovals;
+use App\Filament\Widgets\PersonalTrainingStats;
 use App\Filament\Widgets\RenewalsDue;
 use App\Mail\EnrollmentConfirmation;
 use App\Models\Enrollment;
@@ -42,7 +43,13 @@ class PendingApprovalsDashboardTest extends TestCase
         $this->actingAs(User::factory()->create(['role' => $role]));
         $this->get('/admin')->assertOk()->assertSee('pending review');
         $widgets = array_values(app(Dashboard::class)->getWidgets());
-        $this->assertContains(PendingApprovals::class, $widgets);
+        $this->assertSame([
+            EnrollmentStats::class,
+            PendingApprovals::class,
+            PersonalTrainingStats::class,
+            OverdueBalances::class,
+            RenewalsDue::class,
+        ], $widgets);
         $this->assertLessThan(array_search(OverdueBalances::class, $widgets), array_search(PendingApprovals::class, $widgets));
         $this->assertLessThan(array_search(RenewalsDue::class, $widgets), array_search(PendingApprovals::class, $widgets));
     }
