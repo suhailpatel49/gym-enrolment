@@ -14,7 +14,7 @@ class EnrollmentStats extends StatsOverviewWidget
 
     protected ?string $heading = 'Business snapshot';
 
-    protected ?string $description = 'Current totals from approved enrollments.';
+    protected ?string $description = 'Pending review and current totals from approved enrollments.';
 
     protected function getStats(): array
     {
@@ -51,6 +51,11 @@ class EnrollmentStats extends StatsOverviewWidget
         $activeRate = $total > 0 ? round(($active / $total) * 100) : 0;
 
         $stats = [
+            Stat::make('Pending approvals', number_format(Enrollment::query()->where('approval_status', 'pending')->count()))
+                ->description('Enrollments awaiting review')
+                ->descriptionIcon(Heroicon::OutlinedClock)
+                ->color('warning')
+                ->url(EnrollmentResource::getUrl('index')),
             Stat::make('Active memberships', number_format($active))
                 ->description($activeRate.'% active · '.number_format($total).' total')
                 ->descriptionIcon(Heroicon::OutlinedUserGroup)

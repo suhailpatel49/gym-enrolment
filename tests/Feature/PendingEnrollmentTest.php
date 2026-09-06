@@ -99,7 +99,7 @@ class PendingEnrollmentTest extends TestCase
         Livewire::test($widget)->assertCanSeeTableRecords([$approved])->assertCanNotSeeTableRecords([$pending]);
     }
 
-    public function test_pending_records_do_not_contribute_to_any_statistics(): void
+    public function test_pending_records_do_not_contribute_to_approved_membership_statistics(): void
     {
         $before = Livewire::test(EnrollmentStats::class)->html();
         $this->pending();
@@ -107,7 +107,7 @@ class PendingEnrollmentTest extends TestCase
         $values = static function (string $html): array {
             preg_match_all('/class="fi-wi-stats-overview-stat-value">\s*(.*?)\s*<\/div>/s', $html, $matches);
 
-            return $matches[1];
+            return array_slice($matches[1], 1);
         };
         $this->assertCount(6, $values($before));
         $this->assertSame($values($before), $values($after));
