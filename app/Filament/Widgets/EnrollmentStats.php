@@ -14,7 +14,7 @@ class EnrollmentStats extends StatsOverviewWidget
 
     protected ?string $heading = 'Business snapshot';
 
-    protected ?string $description = 'Current totals from all enrollment records.';
+    protected ?string $description = 'Current totals from approved enrollments.';
 
     protected function getStats(): array
     {
@@ -26,6 +26,7 @@ class EnrollmentStats extends StatsOverviewWidget
         $renewalLimit = today()->addDays(30)->toDateString();
 
         $summaryQuery = Enrollment::query()
+            ->where('approval_status', 'approved')
             ->selectRaw('COUNT(*) as total')
             ->selectRaw('SUM(CASE WHEN membership_start_date <= ? AND membership_end_date >= ? THEN 1 ELSE 0 END) as active', [$today, $today])
             ->selectRaw('SUM(CASE WHEN membership_end_date < ? THEN 1 ELSE 0 END) as expired', [$today])
@@ -56,7 +57,7 @@ class EnrollmentStats extends StatsOverviewWidget
                 ->color('success')
                 ->url(EnrollmentResource::getUrl('index')),
             Stat::make('New this month', number_format((int) ($summary?->new_this_month ?? 0)))
-                ->description('Enrollment submissions this month')
+                ->description('Approved enrollments submitted this month')
                 ->descriptionIcon(Heroicon::OutlinedUserPlus)
                 ->color('primary'),
             Stat::make('Renewals due', number_format((int) ($summary?->renewals_thirty_days ?? 0)))

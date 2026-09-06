@@ -90,6 +90,9 @@ class ImportEnrollmentsCommandTest extends TestCase
         $this->assertSame(1, Enrollment::query()->count());
 
         $enrollment = Enrollment::query()->firstOrFail();
+        $this->assertSame('approved', $enrollment->approval_status);
+        $this->assertNull($enrollment->approved_by);
+        $this->assertNull($enrollment->approved_at);
 
         $this->assertSame('Asha Patel', $enrollment->full_name);
         $this->assertNull($enrollment->date_of_birth);

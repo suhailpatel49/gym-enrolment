@@ -16,8 +16,8 @@ class DownloadConfirmationAction
             ->label('Download confirmation')
             ->icon(Heroicon::OutlinedDocumentArrowDown)
             ->color('gray')
-            ->visible(fn (): bool => auth()->user()?->isAdmin() ?? false)
-            ->authorize(fn (): bool => auth()->user()?->isAdmin() ?? false)
+            ->visible(fn (Enrollment $record): bool => $record->approval_status === 'approved' && (auth()->user()?->isAdmin() ?? false))
+            ->authorize(fn (Enrollment $record): bool => $record->approval_status === 'approved' && (auth()->user()?->isAdmin() ?? false))
             ->action(fn (Enrollment $record): StreamedResponse => app(EnrollmentConfirmationPdf::class)->download($record));
     }
 }

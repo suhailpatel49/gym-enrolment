@@ -1,6 +1,5 @@
 <?php
 
-use App\Mail\EnrollmentConfirmation;
 use App\Mail\NewEnrollmentNotification;
 use App\Models\Enrollment;
 use Illuminate\Support\Facades\Date;
@@ -133,6 +132,7 @@ new class extends Component
             : (int) $validated['packageMonths'];
 
         $enrollment = Enrollment::query()->create([
+            'approval_status' => 'pending',
             'user_id' => auth()->id(),
             'reference_code' => $referenceCode,
             'email' => $validated['email'],
@@ -155,7 +155,6 @@ new class extends Component
             'terms_accepted' => true,
         ]);
 
-        Mail::to($enrollment->email)->queue(new EnrollmentConfirmation($enrollment));
         Mail::to(config('gym.email'))->queue(new NewEnrollmentNotification($enrollment));
 
         $this->submittedReference = $referenceCode;
@@ -202,8 +201,8 @@ new class extends Component
     @if ($submittedReference)
         <section class="rounded-3xl border border-[#dde4df] bg-white p-8 text-center shadow-[0_16px_50px_rgba(23,32,28,0.07)] sm:p-14">
             <div class="mx-auto grid size-16 place-items-center rounded-full bg-[#c8ff48] text-3xl font-black">✓</div>
-            <h1 class="mt-6 text-3xl font-extrabold tracking-tight">Enrollment complete</h1>
-            <p class="mx-auto mt-3 max-w-lg leading-relaxed text-[#65706a]">Thank you. Your membership enrollment was submitted successfully. Please check your email for your confirmation.</p>
+            <h1 class="mt-6 text-3xl font-extrabold tracking-tight">Enrollment submitted for approval</h1>
+            <p class="mx-auto mt-3 max-w-lg leading-relaxed text-[#65706a]">Thank you. Your enrollment was submitted for approval. Your confirmation will be emailed after approval.</p>
             <div class="mx-auto mt-6 max-w-sm rounded-2xl bg-[#f3f6f3] p-4">
                 <p class="text-xs font-bold uppercase tracking-wider text-[#65706a]">Reference</p>
                 <p class="mt-1 text-xl font-extrabold">{{ $submittedReference }}</p>

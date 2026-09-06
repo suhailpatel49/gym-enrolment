@@ -2,7 +2,6 @@
 
 namespace App\Filament\Resources\Enrollments\Schemas;
 
-use App\Models\Enrollment;
 use Filament\Infolists\Components\IconEntry;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Schema;
@@ -15,6 +14,11 @@ class EnrollmentInfolist
 
         return $schema
             ->components([
+                TextEntry::make('approval_status')
+                    ->label('Approval status')
+                    ->badge()
+                    ->formatStateUsing(fn (string $state): string => ucfirst($state))
+                    ->color(fn (string $state): string => $state === 'pending' ? 'warning' : 'success'),
                 TextEntry::make('reference_code')
                     ->label('Reference')
                     ->copyable(),
@@ -47,7 +51,7 @@ class EnrollmentInfolist
                 TextEntry::make('amount_paid')
                     ->label('Amount paid')
                     ->money('INR')
-                    ->visible(fn (Enrollment $record): bool => $isAdmin || $record->has_balance),
+                    ->visible($isAdmin),
                 TextEntry::make('membership_start_date')
                     ->date('d M Y'),
                 TextEntry::make('membership_end_date')
@@ -59,7 +63,7 @@ class EnrollmentInfolist
                     ->label('Remaining balance')
                     ->money('INR')
                     ->placeholder('-')
-                    ->visible(fn (Enrollment $record): bool => $isAdmin || $record->has_balance),
+                    ->visible($isAdmin),
                 TextEntry::make('balance_due_date')
                     ->label('Balance due date')
                     ->date('d M Y')

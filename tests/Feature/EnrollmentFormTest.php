@@ -62,7 +62,7 @@ class EnrollmentFormTest extends TestCase
             ->assertSet('remainingBalance', '0.01');
     }
 
-    public function test_enrollment_is_saved_and_both_emails_are_queued(): void
+    public function test_enrollment_is_pending_and_only_the_gym_email_is_queued(): void
     {
         Mail::fake();
         config()->set('gym.email', 'gym@example.com');
@@ -83,7 +83,11 @@ class EnrollmentFormTest extends TestCase
             ->set('termsAccepted', true)
             ->call('submit')
             ->assertHasNoErrors()
-            ->assertNotSet('submittedReference', null);
+            ->assertNotSet('submittedReference', null)
+            ->assertSee('Enrollment submitted for approval')
+            ->assertSee('Your confirmation will be emailed after approval.')
+            ->assertDontSee('Enrollment complete')
+            ->assertDontSee('Please check your email');
 
         $enrollment = Enrollment::query()->firstOrFail();
 
@@ -91,16 +95,16 @@ class EnrollmentFormTest extends TestCase
         $this->assertSame('3 Months', $enrollment->membership_package);
         $this->assertSame('2026-11-30', $enrollment->membership_end_date->toDateString());
 
-        Mail::assertQueued(
-            EnrollmentConfirmation::class,
-            fn (EnrollmentConfirmation $mail): bool => $mail->hasTo('member@example.com'),
-        );
+        $this->assertSame('pending', $enrollment->approval_status);
+        $this->assertNull($enrollment->approved_by);
+        $this->assertNull($enrollment->approved_at);
+        Mail::assertNotQueued(EnrollmentConfirmation::class);
         Mail::assertQueued(
             NewEnrollmentNotification::class,
             fn (NewEnrollmentNotification $mail): bool => $mail->hasTo('gym@example.com'),
         );
 
-        Mail::assertQueuedCount(2);
+        Mail::assertQueuedCount(1);
     }
 
     public function test_custom_package_months_and_payment_values_are_preserved(): void
