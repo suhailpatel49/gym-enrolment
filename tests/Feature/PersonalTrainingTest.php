@@ -79,10 +79,10 @@ class PersonalTrainingTest extends TestCase
     }
 
     #[DataProvider('statuses')]
-    public function test_status_and_current_scope_agree(bool $active, string $end, string $status): void
+    public function test_status_and_current_scope_agree(bool $active, string $start, string $end, string $status): void
     {
         $this->travelTo(Carbon::parse('2026-06-10 23:59:59'));
-        $member = PersonalTrainingMember::factory()->create(['active' => $active, 'end_date' => $end]);
+        $member = PersonalTrainingMember::factory()->create(['active' => $active, 'start_date' => $start, 'end_date' => $end]);
 
         $this->assertSame($status, $member->status);
         $this->assertSame($status === 'Active', PersonalTrainingMember::query()->current()->whereKey($member)->exists());
@@ -91,11 +91,14 @@ class PersonalTrainingTest extends TestCase
     public static function statuses(): array
     {
         return [
-            [true, '2026-06-09', 'Expired'],
-            [true, '2026-06-10', 'Active'],
-            [true, '2026-06-11', 'Active'],
-            [false, '2026-06-09', 'Inactive'],
-            [false, '2026-06-11', 'Inactive'],
+            [true, '2026-06-01', '2026-06-09', 'Expired'],
+            [true, '2026-06-01', '2026-06-10', 'Active'],
+            [true, '2026-06-01', '2026-06-11', 'Active'],
+            [true, '2026-06-10', '2026-06-10', 'Active'],
+            [true, '2026-06-11', '2026-06-17', 'Upcoming'],
+            [false, '2026-06-11', '2026-06-17', 'Inactive'],
+            [false, '2026-06-01', '2026-06-09', 'Inactive'],
+            [false, '2026-06-01', '2026-06-11', 'Inactive'],
         ];
     }
 

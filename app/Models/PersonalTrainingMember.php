@@ -31,7 +31,9 @@ class PersonalTrainingMember extends Model
     #[Scope]
     protected function current(Builder $query): Builder
     {
-        return $query->where('active', true)->where('end_date', '>=', today()->toDateString());
+        return $query->where('active', true)
+            ->whereDate('start_date', '<=', today()->toDateString())
+            ->where('end_date', '>=', today()->toDateString());
     }
 
     public function renewOneMonth(string $expectedEndDate): bool
@@ -57,7 +59,12 @@ class PersonalTrainingMember extends Model
 
     protected function status(): Attribute
     {
-        return Attribute::get(fn (): string => ! $this->active ? 'Inactive' : ($this->end_date->lt(today()) ? 'Expired' : 'Active'));
+        return Attribute::get(fn (): string => match (true) {
+            ! $this->active => 'Inactive',
+            $this->start_date->gt(today()) => 'Upcoming',
+            $this->end_date->lt(today()) => 'Expired',
+            default => 'Active',
+        });
     }
 
     protected function casts(): array

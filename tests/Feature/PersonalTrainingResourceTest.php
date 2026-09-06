@@ -17,6 +17,8 @@ use App\Models\User;
 use Carbon\Carbon;
 use Filament\Actions\Testing\TestAction;
 use Filament\Facades\Filament;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Mail;
@@ -169,13 +171,18 @@ class PersonalTrainingResourceTest extends TestCase
         $active = PersonalTrainingMember::factory()->create(['end_date' => '2026-06-10']);
         $expired = PersonalTrainingMember::factory()->for($active->trainer)->create(['end_date' => '2026-06-09']);
         $inactive = PersonalTrainingMember::factory()->create(['active' => false]);
+        $upcoming = PersonalTrainingMember::factory()->for($active->trainer)->create(['start_date' => '2026-06-11', 'end_date' => '2026-06-17']);
         $paid = PersonalTrainingMember::factory()->create(['member_payment_paid' => true, 'trainer_payment_paid' => true]);
         Livewire::test(ListPersonalTrainingMembers::class)
-            ->assertCanSeeTableRecords([$active, $expired, $inactive, $paid])
-            ->filterTable('trainer', $active->trainer_id)->assertCanSeeTableRecords([$active, $expired])->assertCanNotSeeTableRecords([$inactive, $paid])
-            ->resetTableFilters()->filterTable('status', 'active')->assertCanSeeTableRecords([$active, $paid])->assertCanNotSeeTableRecords([$expired, $inactive])
-            ->resetTableFilters()->filterTable('status', 'expired')->assertCanSeeTableRecords([$expired])->assertCanNotSeeTableRecords([$active, $inactive, $paid])
-            ->resetTableFilters()->filterTable('status', 'inactive')->assertCanSeeTableRecords([$inactive])->assertCanNotSeeTableRecords([$active, $expired, $paid])
+            ->assertTableFilterExists('status', fn (SelectFilter $filter): bool => ($filter->getOptions()['upcoming'] ?? null) === 'Upcoming')
+            ->assertCanSeeTableRecords([$active, $expired, $inactive, $paid, $upcoming])
+            ->filterTable('trainer', $active->trainer_id)->assertCanSeeTableRecords([$active, $expired, $upcoming])->assertCanNotSeeTableRecords([$inactive, $paid])
+            ->resetTableFilters()->filterTable('status', 'active')->assertCanSeeTableRecords([$active, $paid])->assertCanNotSeeTableRecords([$expired, $inactive, $upcoming])
+            ->resetTableFilters()->filterTable('status', 'expired')->assertCanSeeTableRecords([$expired])->assertCanNotSeeTableRecords([$active, $inactive, $paid, $upcoming])
+            ->resetTableFilters()->filterTable('status', 'inactive')->assertCanSeeTableRecords([$inactive])->assertCanNotSeeTableRecords([$active, $expired, $paid, $upcoming])
+            ->resetTableFilters()->filterTable('status', 'upcoming')->assertCanSeeTableRecords([$upcoming])->assertCanNotSeeTableRecords([$active, $expired, $inactive, $paid])
+            ->assertTableColumnStateSet('status', 'Upcoming', $upcoming)
+            ->assertTableColumnExists('status', fn (TextColumn $column): bool => $column->isBadge() && $column->getColor($column->getState()) === 'info', $upcoming)
             ->resetTableFilters()->filterTable('member_payment_paid', true)->assertCanSeeTableRecords([$paid])->assertCanNotSeeTableRecords([$active])
             ->resetTableFilters()->filterTable('trainer_payment_paid', false)->assertCanSeeTableRecords([$active])->assertCanNotSeeTableRecords([$paid]);
         Livewire::test(ListTrainers::class)->assertTableColumnStateSet('personal_training_members_count', 1, $active->trainer);

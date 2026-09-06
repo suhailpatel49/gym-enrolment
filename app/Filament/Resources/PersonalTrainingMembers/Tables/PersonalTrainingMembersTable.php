@@ -33,14 +33,15 @@ class PersonalTrainingMembersTable
                     ->color(fn (bool $state): string => $state ? 'success' : 'warning'),
                 TextColumn::make('status')->badge()
                     ->color(fn (string $state): string => match ($state) {
-                        'Active' => 'success', 'Expired' => 'danger', default => 'gray',
+                        'Active' => 'success', 'Upcoming' => 'info', 'Expired' => 'danger', default => 'gray',
                     }),
             ])
             ->filters([
                 SelectFilter::make('trainer')->relationship('trainer', 'name')->searchable()->preload(),
-                SelectFilter::make('status')->options(['active' => 'Active', 'expired' => 'Expired', 'inactive' => 'Inactive'])
+                SelectFilter::make('status')->options(['active' => 'Active', 'upcoming' => 'Upcoming', 'expired' => 'Expired', 'inactive' => 'Inactive'])
                     ->query(fn (Builder $query, array $data): Builder => match ($data['value']) {
                         'active' => $query->current(),
+                        'upcoming' => $query->where('active', true)->whereDate('start_date', '>', today()->toDateString()),
                         'expired' => $query->where('active', true)->where('end_date', '<', today()->toDateString()),
                         'inactive' => $query->where('active', false),
                         default => $query,

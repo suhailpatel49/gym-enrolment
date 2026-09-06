@@ -35,6 +35,8 @@ class PersonalTrainingDashboardTest extends TestCase
         PersonalTrainingMember::factory()->create(['end_date' => '2026-06-09']);
         PersonalTrainingMember::factory()->create(['end_date' => '2026-06-12', 'active' => false]);
 
+        PersonalTrainingMember::factory()->create(['start_date' => '2026-06-11', 'end_date' => '2026-06-17']);
+
         $widget = Livewire::test(PersonalTrainingStats::class);
         $stats = $widget->instance()->getSchema('content')->getComponents()[0]->getChildSchema()->getComponents();
         $this->assertCount(4, $stats);
