@@ -9,9 +9,12 @@ use App\Models\Trainer;
 use App\Models\User;
 use Carbon\Carbon;
 use Filament\Facades\Filament;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 class TrainerMonthlyLedgerTest extends TestCase
@@ -41,6 +44,86 @@ class TrainerMonthlyLedgerTest extends TestCase
         PersonalTrainingMember::factory()->create([
             'total_client_amount' => '100.00',
             'gym_amount' => '100.01',
+        ]);
+    }
+
+    public function test_amounts_are_converted_to_integer_cents_within_the_decimal_column_limit(): void
+    {
+        $this->assertSame(9_999_999_999, PersonalTrainingMember::amountInCents('99999999.99'));
+        $entry = PersonalTrainingMember::factory()->create([
+            'total_client_amount' => '99999999.99',
+            'gym_amount' => '0.00',
+        ]);
+        $this->assertSame('99999999.99', $entry->trainer_amount);
+
+        $this->expectException(ValidationException::class);
+        PersonalTrainingMember::amountInCents('100000000.00');
+    }
+
+    /** @param array{total_client_amount: string, gym_amount: string, trainer_amount: string} $amounts */
+    #[DataProvider('invalidDatabaseAmounts')]
+    public function test_database_rejects_invalid_amount_splits(array $amounts): void
+    {
+        $trainer = Trainer::factory()->create();
+
+        $this->expectException(QueryException::class);
+        DB::table('personal_training_members')->insert([
+            'client_name' => 'Invalid split',
+            'trainer_id' => $trainer->id,
+            'start_date' => '2026-06-01',
+            'end_date' => '2026-06-30',
+            ...$amounts,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+    }
+
+    public static function invalidDatabaseAmounts(): array
+    {
+        return [
+            'negative total' => [[
+                'total_client_amount' => '-0.01',
+                'gym_amount' => '0.00',
+                'trainer_amount' => '-0.01',
+            ]],
+            'total above decimal maximum' => [[
+                'total_client_amount' => '100000000.00',
+                'gym_amount' => '0.00',
+                'trainer_amount' => '100000000.00',
+            ]],
+            'fractional cent' => [[
+                'total_client_amount' => '10.001',
+                'gym_amount' => '0.00',
+                'trainer_amount' => '10.001',
+            ]],
+            'negative gym amount' => [[
+                'total_client_amount' => '10.00',
+                'gym_amount' => '-0.01',
+                'trainer_amount' => '10.01',
+            ]],
+            'gym amount above total' => [[
+                'total_client_amount' => '10.00',
+                'gym_amount' => '10.01',
+                'trainer_amount' => '0.00',
+            ]],
+            'incorrect trainer amount' => [[
+                'total_client_amount' => '10.00',
+                'gym_amount' => '1.00',
+                'trainer_amount' => '8.99',
+            ]],
+        ];
+    }
+
+    public function test_database_rejects_updates_that_break_the_amount_split(): void
+    {
+        $entry = PersonalTrainingMember::factory()->create([
+            'total_client_amount' => '10.00',
+            'gym_amount' => '1.00',
+        ]);
+
+        $this->expectException(QueryException::class);
+        DB::table('personal_training_members')->where('id', $entry->id)->update([
+            'trainer_amount' => '8.99',
         ]);
     }
 
@@ -103,6 +186,38 @@ class TrainerMonthlyLedgerTest extends TestCase
         $this->assertCount(2, $trainer->monthlyLedger());
     }
 
+    public function test_monthly_summary_is_grouped_and_summed_by_the_database_without_loading_entry_columns(): void
+    {
+        $trainer = Trainer::factory()->create();
+        PersonalTrainingMember::factory()->for($trainer)->create([
+            'start_date' => '2026-06-01',
+            'end_date' => '2026-06-30',
+            'total_client_amount' => '0.10',
+            'gym_amount' => '0.00',
+            'remark' => 'A large private remark must not be selected',
+        ]);
+        PersonalTrainingMember::factory()->for($trainer)->create([
+            'start_date' => '2026-06-02',
+            'end_date' => '2026-06-30',
+            'total_client_amount' => '0.20',
+            'gym_amount' => '0.00',
+            'remark' => 'Another large private remark must not be selected',
+        ]);
+
+        DB::flushQueryLog();
+        DB::enableQueryLog();
+
+        $june = $trainer->monthlyLedger()->sole();
+        $queries = DB::getQueryLog();
+
+        $this->assertSame('0.30', $june['total_client_amount']);
+        $this->assertSame('0.30', $june['total_trainer_amount']);
+        $this->assertCount(1, $queries);
+        $this->assertStringContainsString('group by', strtolower($queries[0]['query']));
+        $this->assertStringNotContainsString('select *', strtolower($queries[0]['query']));
+        $this->assertStringNotContainsString('remark', strtolower($queries[0]['query']));
+    }
+
     public function test_staff_can_create_a_complete_ledger_entry_and_open_month_details(): void
     {
         $this->actingAs(User::factory()->staff()->create());
@@ -160,5 +275,34 @@ class TrainerMonthlyLedgerTest extends TestCase
             ->assertSee('Gym Retained Commission')
             ->assertSee('Pending')
             ->assertSee('Update entry');
+    }
+
+    public function test_month_details_render_twelve_entries_per_page_with_navigation(): void
+    {
+        $this->actingAs(User::factory()->staff()->create());
+        $trainer = Trainer::factory()->create();
+
+        foreach (range(1, 13) as $number) {
+            PersonalTrainingMember::factory()->for($trainer)->create([
+                'client_name' => sprintf('June Client %02d', $number),
+                'start_date' => '2026-06-01',
+                'end_date' => '2026-06-30',
+            ]);
+        }
+
+        $url = TrainerResource::getUrl('month', ['record' => $trainer, 'month' => '2026-06']);
+
+        $this->get($url)
+            ->assertOk()
+            ->assertSee('June Client 01')
+            ->assertSee('June Client 12')
+            ->assertDontSee('June Client 13')
+            ->assertSee('Next');
+
+        $this->get($url.'?page=2')
+            ->assertOk()
+            ->assertDontSee('June Client 01')
+            ->assertSee('June Client 13')
+            ->assertSee('Previous');
     }
 }

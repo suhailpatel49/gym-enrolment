@@ -1,8 +1,9 @@
 <x-filament-panels::page>
     @vite('resources/css/app.css')
+    @php($entries = $this->getEntries())
 
     <div class="grid grid-cols-1 gap-6 xl:grid-cols-2">
-        @forelse ($this->getEntries() as $entry)
+        @forelse ($entries as $entry)
             <x-filament::section>
                 <x-slot name="heading">
                     <div class="flex flex-wrap items-center justify-between gap-3">
@@ -47,4 +48,6 @@
             </x-filament::section>
         @endforelse
     </div>
+
+    {{ $entries->links() }}
 </x-filament-panels::page>

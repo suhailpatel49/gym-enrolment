@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 #[Fillable([
@@ -96,11 +97,16 @@ class PersonalTrainingMember extends Model
     {
         $amount = (string) $amount;
 
-        if (! preg_match('/^\d+(?:\.\d{1,2})?$/', $amount)) {
+        if (! preg_match('/^(\d+)(?:\.(\d{1,2}))?$/', $amount, $matches)) {
             throw ValidationException::withMessages(['amount' => 'Amounts must be nonnegative with at most two decimal places.']);
         }
 
-        [$whole, $fraction] = array_pad(explode('.', $amount, 2), 2, '');
+        $whole = ltrim($matches[1], '0') ?: '0';
+        $fraction = $matches[2] ?? '';
+
+        if (Str::length($whole) > 8) {
+            throw ValidationException::withMessages(['amount' => 'Amounts may not exceed 99999999.99.']);
+        }
 
         return ((int) $whole * 100) + (int) str_pad($fraction, 2, '0');
     }

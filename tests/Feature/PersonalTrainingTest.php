@@ -114,9 +114,11 @@ class PersonalTrainingTest extends TestCase
     public function test_migrations_roll_back_and_reapply_cleanly(): void
     {
         $this->assertTrue(Schema::hasTable('personal_training_members'));
+        $moneyInvariantMigration = require database_path('migrations/2026_09_09_011948_enforce_personal_training_member_money_invariants.php');
         $ledgerMigration = require database_path('migrations/2026_09_09_002809_expand_personal_training_members_for_trainer_ledger.php');
         $membersMigration = require database_path('migrations/2026_09_06_000002_create_personal_training_members_table.php');
         $trainersMigration = require database_path('migrations/2026_09_06_000001_create_trainers_table.php');
+        $moneyInvariantMigration->down();
         $ledgerMigration->down();
         $membersMigration->down();
         $trainersMigration->down();
@@ -125,12 +127,15 @@ class PersonalTrainingTest extends TestCase
         $trainersMigration->up();
         $membersMigration->up();
         $ledgerMigration->up();
+        $moneyInvariantMigration->up();
         $this->assertModelExists(PersonalTrainingMember::factory()->create());
     }
 
     public function test_ledger_migration_preserves_existing_personal_training_amounts(): void
     {
+        $moneyInvariantMigration = require database_path('migrations/2026_09_09_011948_enforce_personal_training_member_money_invariants.php');
         $ledgerMigration = require database_path('migrations/2026_09_09_002809_expand_personal_training_members_for_trainer_ledger.php');
+        $moneyInvariantMigration->down();
         $ledgerMigration->down();
         $trainer = Trainer::factory()->create();
         DB::table('personal_training_members')->insert([
@@ -144,6 +149,7 @@ class PersonalTrainingTest extends TestCase
         ]);
 
         $ledgerMigration->up();
+        $moneyInvariantMigration->up();
 
         $entry = PersonalTrainingMember::query()->sole();
         $this->assertSame('Existing Client', $entry->client_name);

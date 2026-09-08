@@ -4,10 +4,10 @@ namespace App\Models;
 
 use Database\Factories\TrainerFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
-use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use InvalidArgumentException;
 
@@ -41,34 +41,35 @@ class Trainer extends Model
     public function monthlyLedger(): Collection
     {
         return $this->personalTrainingMembers()
-            ->orderByDesc('start_date')
+            ->toBase()
+            ->selectRaw("strftime('%Y-%m', start_date) as month")
+            ->selectRaw('COUNT(CASE WHEN active = 1 THEN 1 END) as entry_count')
+            ->selectRaw('COUNT(CASE WHEN active = 1 AND CAST(ROUND(gym_amount * 100) AS INTEGER) = 0 THEN 1 END) as full_payment_count')
+            ->selectRaw('COUNT(CASE WHEN active = 1 AND CAST(ROUND(gym_amount * 100) AS INTEGER) > 0 THEN 1 END) as gym_commission_count')
+            ->selectRaw('COUNT(CASE WHEN active = 1 AND CAST(trainer_payment_paid AS INTEGER) = 1 THEN 1 END) as paid_count')
+            ->selectRaw('COUNT(CASE WHEN active = 1 AND CAST(trainer_payment_paid AS INTEGER) = 0 THEN 1 END) as pending_count')
+            ->selectRaw('SUM(CASE WHEN active = 1 THEN CAST(ROUND(total_client_amount * 100) AS INTEGER) ELSE 0 END) as total_client_cents')
+            ->selectRaw('SUM(CASE WHEN active = 1 THEN CAST(ROUND(gym_amount * 100) AS INTEGER) ELSE 0 END) as total_gym_cents')
+            ->selectRaw('SUM(CASE WHEN active = 1 THEN CAST(ROUND(trainer_amount * 100) AS INTEGER) ELSE 0 END) as total_trainer_cents')
+            ->groupBy('month')
+            ->orderByDesc('month')
             ->get()
-            ->groupBy(fn (PersonalTrainingMember $entry): string => $entry->start_date->format('Y-m'))
-            ->map(function (EloquentCollection $entries, string $month): array {
-                $payableEntries = $entries->where('active', true);
-
-                return [
-                    'month' => $month,
-                    'label' => $entries->first()->start_date->format('F Y'),
-                    'entry_count' => $payableEntries->count(),
-                    'full_payment_count' => $payableEntries->filter(
-                        fn (PersonalTrainingMember $entry): bool => self::amountInCents($entry->gym_amount) === 0
-                    )->count(),
-                    'gym_commission_count' => $payableEntries->filter(
-                        fn (PersonalTrainingMember $entry): bool => self::amountInCents($entry->gym_amount) > 0
-                    )->count(),
-                    'paid_count' => $payableEntries->where('trainer_payment_paid', true)->count(),
-                    'pending_count' => $payableEntries->where('trainer_payment_paid', false)->count(),
-                    'total_client_amount' => self::sumAmount($payableEntries, 'total_client_amount'),
-                    'total_gym_amount' => self::sumAmount($payableEntries, 'gym_amount'),
-                    'total_trainer_amount' => self::sumAmount($payableEntries, 'trainer_amount'),
-                ];
-            })
-            ->values();
+            ->map(fn (object $row): array => [
+                'month' => $row->month,
+                'label' => now()->createFromFormat('Y-m-d', $row->month.'-01')->format('F Y'),
+                'entry_count' => (int) $row->entry_count,
+                'full_payment_count' => (int) $row->full_payment_count,
+                'gym_commission_count' => (int) $row->gym_commission_count,
+                'paid_count' => (int) $row->paid_count,
+                'pending_count' => (int) $row->pending_count,
+                'total_client_amount' => self::formatCents((int) $row->total_client_cents),
+                'total_gym_amount' => self::formatCents((int) $row->total_gym_cents),
+                'total_trainer_amount' => self::formatCents((int) $row->total_trainer_cents),
+            ]);
     }
 
-    /** @return EloquentCollection<int, PersonalTrainingMember> */
-    public function personalTrainingMembersForMonth(string $month): EloquentCollection
+    /** @return LengthAwarePaginator<int, PersonalTrainingMember> */
+    public function personalTrainingMembersForMonth(string $month): LengthAwarePaginator
     {
         if (! preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $month)) {
             throw new InvalidArgumentException('Month must use YYYY-MM format.');
@@ -79,19 +80,11 @@ class Trainer extends Model
             ->where('start_date', '<', now()->createFromFormat('Y-m-d', $month.'-01')->addMonth()->toDateString())
             ->orderBy('start_date')
             ->orderBy('id')
-            ->get();
+            ->paginate(12);
     }
 
-    private static function amountInCents(string|int|float $amount): int
+    private static function formatCents(int $cents): string
     {
-        return PersonalTrainingMember::amountInCents($amount);
-    }
-
-    /** @param EloquentCollection<int, PersonalTrainingMember> $entries */
-    private static function sumAmount(EloquentCollection $entries, string $attribute): string
-    {
-        $cents = $entries->sum(fn (PersonalTrainingMember $entry): int => self::amountInCents($entry->{$attribute}));
-
         return number_format($cents / 100, 2, '.', '');
     }
 

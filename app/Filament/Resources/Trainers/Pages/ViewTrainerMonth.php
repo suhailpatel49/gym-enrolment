@@ -6,7 +6,7 @@ use App\Filament\Resources\Trainers\TrainerResource;
 use App\Models\PersonalTrainingMember;
 use Filament\Actions\EditAction;
 use Filament\Resources\Pages\ViewRecord;
-use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 class ViewTrainerMonth extends ViewRecord
 {
@@ -25,8 +25,8 @@ class ViewTrainerMonth extends ViewRecord
         parent::mount($record);
     }
 
-    /** @return Collection<int, PersonalTrainingMember> */
-    public function getEntries(): Collection
+    /** @return LengthAwarePaginator<int, PersonalTrainingMember> */
+    public function getEntries(): LengthAwarePaginator
     {
         return $this->getRecord()->personalTrainingMembersForMonth($this->month);
     }
