@@ -1,0 +1,90 @@
+@import '../../../../vendor/filament/filament/resources/css/theme.css';
+
+@source '../../../../app/Filament/**/*';
+@source '../../../../resources/views/filament/**/*';
+
+@font-face {
+    font-family: 'Archivo';
+    src: url('../../../fonts/archivo/archivo-latin.woff2') format('woff2');
+    font-style: normal;
+    font-weight: 400 700;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Kanit';
+    src: url('../../../fonts/kanit/kanit-600-latin.woff2') format('woff2');
+    font-style: normal;
+    font-weight: 600;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Kanit';
+    src: url('../../../fonts/kanit/kanit-700-latin.woff2') format('woff2');
+    font-style: normal;
+    font-weight: 700;
+    font-display: swap;
+}
+
+@theme {
+    --color-primary: #f41e1e;
+    --color-secondary: #1d2229;
+    --color-tertiary: #171717;
+    --color-muted: #6a6a6a;
+    --color-border: #d8dde1;
+    --color-canvas: #f8f8f8;
+    --font-sans: 'Archivo', ui-sans-serif, system-ui, sans-serif;
+    --font-display: 'Kanit', 'Arial Narrow', ui-sans-serif, system-ui, sans-serif;
+    --radius-sm: 4px;
+    --radius-md: 4px;
+    --radius-lg: 8px;
+    --radius-xl: 12px;
+}
+
+@layer base {
+    :focus-visible {
+        outline: 2px solid var(--color-primary);
+        outline-offset: 2px;
+    }
+}
+
+@layer components {
+    .fi-body {
+        @apply bg-canvas text-tertiary;
+    }
+
+    .fi-sidebar,
+    .fi-topbar nav {
+        @apply bg-secondary text-white;
+    }
+
+    .fi-logo,
+    .fi-header-heading,
+    .fi-section-header-heading,
+    .fi-wi-stats-overview-stat-value {
+        @apply font-display font-semibold uppercase tracking-tight;
+    }
+
+    .fi-section,
+    .fi-ta-ctn,
+    .fi-wi-stats-overview-stat {
+        @apply rounded-lg border-border shadow-none;
+    }
+
+    .fi-btn {
+        @apply rounded-sm;
+    }
+
+    .fi-btn.fi-color-primary {
+        @apply bg-tertiary text-white hover:bg-secondary hover:ring-2 hover:ring-primary;
+    }
+
+    .fi-input-wrp {
+        @apply rounded-sm border-border shadow-none focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20;
+    }
+
+    .fi-sidebar-item.fi-active > .fi-sidebar-item-btn {
+        @apply border-l-4 border-primary bg-white/10 text-white;
+    }
+}

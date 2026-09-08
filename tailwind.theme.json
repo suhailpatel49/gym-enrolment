@@ -1,0 +1,76 @@
+{
+  "theme": {
+    "extend": {
+      "colors": {
+        "primary": "#f41e1e",
+        "secondary": "#1d2229",
+        "tertiary": "#171717",
+        "muted": "#6a6a6a",
+        "border": "#d8dde1",
+        "canvas": "#f8f8f8",
+        "white": "#ffffff"
+      },
+      "fontFamily": {
+        "display": [
+          "Kanit"
+        ],
+        "heading": [
+          "Kanit"
+        ],
+        "body": [
+          "Archivo"
+        ],
+        "label": [
+          "Archivo"
+        ]
+      },
+      "fontSize": {
+        "display": [
+          "48px",
+          {
+            "letterSpacing": "-0.02em",
+            "fontWeight": "700"
+          }
+        ],
+        "heading": [
+          "28px",
+          {
+            "letterSpacing": "-0.01em",
+            "fontWeight": "600"
+          }
+        ],
+        "body": [
+          "16px",
+          {
+            "letterSpacing": "0em",
+            "fontWeight": "400"
+          }
+        ],
+        "label": [
+          "12px",
+          {
+            "letterSpacing": "0.08em",
+            "fontWeight": "700"
+          }
+        ]
+      },
+      "borderRadius": {
+        "none": "0px",
+        "sm": "4px",
+        "md": "8px",
+        "lg": "12px",
+        "xl": "20px",
+        "full": "999px"
+      },
+      "spacing": {
+        "xs": "4px",
+        "sm": "8px",
+        "md": "12px",
+        "lg": "16px",
+        "xl": "24px",
+        "2xl": "32px",
+        "3xl": "48px"
+      }
+    }
+  }
+}

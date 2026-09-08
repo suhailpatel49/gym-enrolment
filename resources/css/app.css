@@ -4,7 +4,107 @@
 @source '../../storage/framework/views/*.php';
 @source '../views/**/*.blade.php';
 
+@font-face {
+    font-family: 'Archivo';
+    src: url('../fonts/archivo/archivo-latin.woff2') format('woff2');
+    font-style: normal;
+    font-weight: 400 700;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Kanit';
+    src: url('../fonts/kanit/kanit-600-latin.woff2') format('woff2');
+    font-style: normal;
+    font-weight: 600;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Kanit';
+    src: url('../fonts/kanit/kanit-700-latin.woff2') format('woff2');
+    font-style: normal;
+    font-weight: 700;
+    font-display: swap;
+}
+
 @theme {
-    --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
-        'Segoe UI Symbol', 'Noto Color Emoji';
+    --color-primary: #f41e1e;
+    --color-secondary: #1d2229;
+    --color-tertiary: #171717;
+    --color-muted: #6a6a6a;
+    --color-border: #d8dde1;
+    --color-canvas: #f8f8f8;
+    --font-sans: 'Archivo', ui-sans-serif, system-ui, sans-serif;
+    --font-display: 'Kanit', 'Arial Narrow', ui-sans-serif, system-ui, sans-serif;
+    --radius-sm: 4px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    --radius-xl: 20px;
+    --shadow-incline: 0 16px 48px rgb(23 23 23 / 10%);
+}
+
+@layer base {
+    ::selection {
+        background: var(--color-primary);
+        color: var(--color-white);
+    }
+
+    :focus-visible {
+        outline: 2px solid var(--color-primary);
+        outline-offset: 2px;
+    }
+
+    button,
+    input,
+    select,
+    textarea {
+        font: inherit;
+    }
+}
+
+@layer components {
+    .incline-card {
+        @apply rounded-lg border border-border bg-white;
+    }
+
+    .incline-heading {
+        @apply font-display font-semibold leading-none tracking-tight text-tertiary;
+    }
+
+    .incline-kicker {
+        @apply text-xs font-bold uppercase tracking-[.12em] text-muted;
+    }
+
+    .incline-button-primary {
+        @apply inline-flex min-h-12 items-center justify-center rounded-sm bg-tertiary px-6 font-bold text-white transition hover:bg-secondary hover:ring-2 hover:ring-primary disabled:cursor-wait disabled:opacity-60;
+    }
+
+    .incline-button-secondary {
+        @apply inline-flex min-h-11 items-center justify-center rounded-sm border border-border bg-white px-4 font-bold text-tertiary transition-colors hover:border-primary hover:text-secondary;
+    }
+
+    .incline-choice {
+        @apply flex min-h-12 cursor-pointer items-center gap-3 rounded-sm border border-border bg-white px-4 font-semibold transition-colors hover:border-primary has-checked:border-primary has-checked:bg-canvas;
+    }
+
+    .incline-dialog {
+        position: fixed;
+        inset: 0;
+        width: min(420px, calc(100% - 32px));
+        max-height: calc(100dvh - 32px);
+        margin: auto;
+        overflow-y: auto;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        scroll-behavior: auto !important;
+        transition-duration: 0.01ms !important;
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+    }
 }
