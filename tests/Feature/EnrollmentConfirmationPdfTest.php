@@ -60,4 +60,31 @@ class EnrollmentConfirmationPdfTest extends TestCase
             ->callAction('downloadConfirmation')
             ->assertFileDownloaded('if-livewire-pdf-download-test-member.pdf');
     }
+
+    public function test_pdf_html_lists_only_terms_accepted_in_the_persisted_enrollment(): void
+    {
+        $acceptedEnrollment = Enrollment::factory()->create([
+            'terms_accepted' => true,
+        ])->fresh();
+        $unacceptedEnrollment = Enrollment::factory()->create([
+            'terms_accepted' => false,
+        ])->fresh();
+
+        $acceptedHtml = view('pdf.enrollment-confirmation', [
+            'enrollment' => $acceptedEnrollment,
+        ])->render();
+        $unacceptedHtml = view('pdf.enrollment-confirmation', [
+            'enrollment' => $unacceptedEnrollment,
+        ])->render();
+
+        $this->assertStringContainsString(
+            'I accept the gym rules, membership terms, freezing policy, and billing policy.',
+            $acceptedHtml,
+        );
+        $this->assertStringNotContainsString('Terms accepted', $unacceptedHtml);
+        $this->assertStringNotContainsString(
+            'I accept the gym rules, membership terms, freezing policy, and billing policy.',
+            $unacceptedHtml,
+        );
+    }
 }

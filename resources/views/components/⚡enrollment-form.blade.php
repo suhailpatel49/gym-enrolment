@@ -324,7 +324,7 @@ new class extends Component
                 </ul>
                 <label class="mt-6 flex cursor-pointer items-start gap-3 rounded-md border border-border bg-canvas p-4 font-semibold transition-colors hover:border-primary has-checked:border-primary">
                     <input wire:model="termsAccepted" type="checkbox" class="mt-1 size-5 accent-primary" required @error('termsAccepted') aria-invalid="true" aria-describedby="termsAccepted-error" @enderror>
-                    <span>I accept the gym rules, membership terms, freezing policy, and billing policy.</span>
+                    <span>{{ Enrollment::TERMS_ACCEPTANCE_TEXT }}</span>
                 </label>
                 @error('termsAccepted') <p id="termsAccepted-error" role="alert" class="mt-2 rounded-sm border-l-4 border-primary bg-canvas px-3 py-2 text-sm font-semibold text-tertiary">{{ $message }}</p> @enderror
             </section>

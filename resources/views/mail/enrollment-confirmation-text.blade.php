@@ -17,5 +17,12 @@ Due date: {{ $enrollment->balance_due_date?->format('d M Y') ?? 'Not specified' 
 @else
 No outstanding balance is recorded.
 @endif
+@if ($enrollment->selectedTerms())
+
+Terms accepted:
+@foreach ($enrollment->selectedTerms() as $term)
+- {{ $term }}
+@endforeach
+@endif
 
 Please keep this message for your records.

@@ -65,4 +65,17 @@
             @endif
         </td>
     </tr>
+    @if ($enrollment->selectedTerms())
+        <tr><td style="height:12px;"></td></tr>
+        <tr>
+            <td class="email-padding" style="padding:23px 26px; background:#FFFFFF; border:1px solid #D8DDE1; border-radius:12px;">
+                <h2 style="margin:0 0 17px; color:#171717; font-size:17px;">Terms accepted</h2>
+                <ul style="margin:0; padding-left:20px; color:#171717; font-size:13px; line-height:1.6;">
+                    @foreach ($enrollment->selectedTerms() as $term)
+                        <li>{{ $term }}</li>
+                    @endforeach
+                </ul>
+            </td>
+        </tr>
+    @endif
 </x-mail-shell>

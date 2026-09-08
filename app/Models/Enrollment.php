@@ -25,6 +25,8 @@ class Enrollment extends Model
     /** @use HasFactory<EnrollmentFactory> */
     use HasFactory;
 
+    public const TERMS_ACCEPTANCE_TEXT = 'I accept the gym rules, membership terms, freezing policy, and billing policy.';
+
     protected $attributes = ['approval_status' => 'approved'];
 
     public function user(): BelongsTo
@@ -70,6 +72,14 @@ class Enrollment extends Model
         ]);
 
         return true;
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function selectedTerms(): array
+    {
+        return $this->terms_accepted ? [self::TERMS_ACCEPTANCE_TEXT] : [];
     }
 
     protected function casts(): array

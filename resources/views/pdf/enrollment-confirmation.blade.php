@@ -189,6 +189,17 @@
         @endif
     </div>
 
+    @if ($enrollment->selectedTerms())
+        <div class="section">
+            <h2>Terms accepted</h2>
+            <ul style="margin:0; padding-left:18px;">
+                @foreach ($enrollment->selectedTerms() as $term)
+                    <li>{{ $term }}</li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
+
     <div class="footer">
         Generated on {{ now()->format('d M Y, h:i A') }}. Keep this confirmation for your records.
     </div>

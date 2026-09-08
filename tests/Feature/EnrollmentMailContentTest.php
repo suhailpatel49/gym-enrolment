@@ -39,4 +39,24 @@ class EnrollmentMailContentTest extends TestCase
             ->assertSeeInText('Test Member')
             ->assertSeeInText('INR 2,500.00');
     }
+
+    public function test_member_email_lists_only_terms_accepted_in_the_persisted_enrollment(): void
+    {
+        $acceptedEnrollment = Enrollment::factory()->create([
+            'terms_accepted' => true,
+        ])->fresh();
+        $unacceptedEnrollment = Enrollment::factory()->create([
+            'terms_accepted' => false,
+        ])->fresh();
+
+        (new EnrollmentConfirmation($acceptedEnrollment))
+            ->assertSeeInHtml('I accept the gym rules, membership terms, freezing policy, and billing policy.')
+            ->assertSeeInText('I accept the gym rules, membership terms, freezing policy, and billing policy.');
+
+        (new EnrollmentConfirmation($unacceptedEnrollment))
+            ->assertDontSeeInHtml('Terms accepted')
+            ->assertDontSeeInText('Terms accepted:')
+            ->assertDontSeeInHtml('I accept the gym rules, membership terms, freezing policy, and billing policy.')
+            ->assertDontSeeInText('I accept the gym rules, membership terms, freezing policy, and billing policy.');
+    }
 }
