@@ -8,19 +8,19 @@
         * { box-sizing: border-box; }
         body {
             margin: 0;
-            color: #17201c;
+            color: #171717;
             font-family: "DejaVu Sans", sans-serif;
             font-size: 12px;
             line-height: 1.45;
         }
         .header {
             padding: 24px 26px;
-            border-radius: 14px;
-            background: #17201c;
-            color: #ffffff;
+            border-bottom: 6px solid #F41E1E;
+            background: #1D2229;
+            color: #FFFFFF;
         }
         .brand {
-            color: #c8ff48;
+            color: #FFFFFF;
             font-size: 13px;
             font-weight: bold;
             letter-spacing: 1px;
@@ -31,15 +31,15 @@
             font-size: 26px;
             line-height: 1.15;
         }
-        .subtitle { color: #d8e1dc; }
+        .subtitle { color: #D8DDE1; }
         .reference {
             margin-top: 18px;
             padding: 12px 14px;
-            border-left: 4px solid #c8ff48;
-            background: #26332d;
+            border-left: 4px solid #F41E1E;
+            background: #171717;
         }
         .reference-label {
-            color: #aebbb4;
+            color: #D8DDE1;
             font-size: 9px;
             letter-spacing: 1px;
             text-transform: uppercase;
@@ -52,7 +52,7 @@
         .section {
             margin-top: 18px;
             padding: 17px 19px;
-            border: 1px solid #dce4df;
+            border: 1px solid #D8DDE1;
             border-radius: 12px;
         }
         h2 {
@@ -69,7 +69,7 @@
             vertical-align: top;
         }
         .label {
-            color: #66736c;
+            color: #6A6A6A;
             font-size: 9px;
             letter-spacing: .5px;
             text-transform: uppercase;
@@ -82,28 +82,30 @@
         .balance {
             margin-top: 15px;
             padding: 12px 14px;
-            border-radius: 8px;
-            background: #fff3e0;
-            color: #7c3f00;
+            border-left: 4px solid #F41E1E;
+            border-radius: 4px;
+            background: #F8F8F8;
+            color: #171717;
         }
         .paid {
             margin-top: 15px;
             padding: 12px 14px;
-            border-radius: 8px;
-            background: #eefbd0;
-            color: #365314;
+            border: 1px solid #D8DDE1;
+            border-radius: 4px;
+            background: #F8F8F8;
+            color: #171717;
         }
         .footer {
             margin-top: 22px;
             padding-top: 12px;
-            border-top: 1px solid #dce4df;
-            color: #66736c;
+            border-top: 1px solid #D8DDE1;
+            color: #6A6A6A;
             font-size: 10px;
             text-align: center;
         }
     </style>
 </head>
-<body>
+<body data-visual-system="incline">
     <div class="header">
         <div class="brand">Incline Fitness</div>
         <h1>Membership confirmation</h1>
