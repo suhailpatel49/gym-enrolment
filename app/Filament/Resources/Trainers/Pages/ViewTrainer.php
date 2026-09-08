@@ -10,6 +10,8 @@ class ViewTrainer extends ViewRecord
 {
     protected static string $resource = TrainerResource::class;
 
+    protected string $view = 'filament.resources.trainers.pages.view-trainer';
+
     protected function getHeaderActions(): array
     {
         return [

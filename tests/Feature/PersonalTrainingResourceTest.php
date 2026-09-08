@@ -58,20 +58,32 @@ class PersonalTrainingResourceTest extends TestCase
         $this->assertSame('123456789', $trainer->fresh()->phone);
 
         Livewire::test(CreatePersonalTrainingMember::class)->fillForm([
-            'member_name' => 'PT Member', 'phone' => '987654321', 'trainer_id' => $trainer->id,
-            'start_date' => '2026-06-01', 'end_date' => '2026-06-30', 'monthly_fee' => '2500.50',
+            'client_name' => 'PT Client', 'phone' => '987654321', 'trainer_id' => $trainer->id, 'payment_mode' => 'Cash',
+            'start_date' => '2026-06-01', 'end_date' => '2026-06-30',
+            'total_client_amount' => '2500.50', 'gym_amount' => '500.25',
         ])->call('create')->assertHasNoFormErrors()->assertNotNotified();
         $member = PersonalTrainingMember::query()->sole();
         $this->assertTrue($member->trainer->is($trainer));
-        $this->assertSame('2500.50', $member->monthly_fee);
-        $this->assertFalse($member->member_payment_paid);
+        $this->assertSame('2500.50', $member->total_client_amount);
+        $this->assertSame('2000.25', $member->trainer_amount);
         $this->assertFalse($member->trainer_payment_paid);
         Livewire::test(EditPersonalTrainingMember::class, ['record' => $member->id])
-            ->fillForm(['member_name' => 'Updated Member', 'member_payment_paid' => true, 'trainer_payment_paid' => true])
+            ->fillForm([
+                'client_name' => 'Updated Client',
+                'payment_mode' => 'Card',
+                'end_date' => '2026-07-15',
+                'gym_amount' => '0.00',
+                'trainer_payment_paid' => true,
+                'remark' => 'Updated arrangement',
+            ])
             ->call('save')->assertHasNoFormErrors()->assertNotNotified();
-        $this->assertSame('Updated Member', $member->fresh()->member_name);
-        $this->assertTrue($member->fresh()->member_payment_paid);
-        $this->assertTrue($member->fresh()->trainer_payment_paid);
+        $member->refresh();
+        $this->assertSame('Updated Client', $member->client_name);
+        $this->assertSame('Card', $member->payment_mode);
+        $this->assertSame('2026-07-15', $member->end_date->toDateString());
+        $this->assertSame('2500.50', $member->trainer_amount);
+        $this->assertTrue($member->trainer_payment_paid);
+        $this->assertSame('Updated arrangement', $member->remark);
 
         foreach ([[TrainerResource::class, $trainer], [PersonalTrainingMemberResource::class, $member]] as [$resource, $record]) {
             foreach (['index', 'create', 'view', 'edit'] as $page) {
@@ -108,18 +120,19 @@ class PersonalTrainingResourceTest extends TestCase
         Livewire::test(EditTrainer::class, ['record' => $trainer->id])->fillForm(['name' => str_repeat('x', 256)])
             ->call('save')->assertHasFormErrors(['name' => 'max']);
         Livewire::test(CreatePersonalTrainingMember::class)->fillForm([
-            'member_name' => '', 'trainer_id' => null, 'start_date' => null, 'end_date' => null, 'monthly_fee' => null,
-        ])->call('create')->assertHasFormErrors(['member_name', 'trainer_id', 'start_date', 'end_date', 'monthly_fee']);
+            'client_name' => '', 'phone' => null, 'trainer_id' => null, 'payment_mode' => null, 'start_date' => null,
+            'end_date' => null, 'total_client_amount' => null,
+        ])->call('create')->assertHasFormErrors(['client_name', 'phone', 'trainer_id', 'payment_mode', 'start_date', 'end_date', 'total_client_amount']);
         $member = PersonalTrainingMember::factory()->for($trainer)->create();
         foreach ([[CreatePersonalTrainingMember::class, [], 'create'], [EditPersonalTrainingMember::class, ['record' => $member->id], 'save']] as [$page, $parameters, $method]) {
             Livewire::test($page, $parameters)->fillForm([
-                'member_name' => 'Member', 'trainer_id' => 999999, 'start_date' => '2026-06-10',
-                'end_date' => '2026-06-09', 'monthly_fee' => -1,
-            ])->call($method)->assertHasFormErrors(['trainer_id', 'end_date', 'monthly_fee']);
+                'client_name' => 'Client', 'trainer_id' => 999999, 'payment_mode' => 'Cash', 'start_date' => '2026-06-10',
+                'end_date' => '2026-06-09', 'total_client_amount' => -1, 'gym_amount' => -1,
+            ])->call($method)->assertHasFormErrors(['trainer_id', 'end_date', 'total_client_amount', 'gym_amount']);
             Livewire::test($page, $parameters)->fillForm([
-                'member_name' => 'Member', 'trainer_id' => $trainer->id, 'start_date' => '2026-06-10',
-                'end_date' => '2026-06-10', 'monthly_fee' => '12.345',
-            ])->call($method)->assertHasFormErrors(['monthly_fee']);
+                'client_name' => 'Client', 'trainer_id' => $trainer->id, 'payment_mode' => 'Cash', 'start_date' => '2026-06-10',
+                'end_date' => '2026-06-10', 'total_client_amount' => '12.345', 'gym_amount' => '13.00',
+            ])->call($method)->assertHasFormErrors(['total_client_amount', 'gym_amount']);
         }
         $this->assertSame(1, PersonalTrainingMember::query()->count());
     }
@@ -139,7 +152,7 @@ class PersonalTrainingResourceTest extends TestCase
         $this->assertSame('2026-07-30', $member->fresh()->end_date->toDateString());
         $this->assertFalse($member->fresh()->member_payment_paid);
         $this->assertFalse($member->fresh()->trainer_payment_paid);
-        $beforeDeactivation = $member->fresh()->only(['start_date', 'end_date', 'monthly_fee', 'member_payment_paid', 'trainer_payment_paid']);
+        $beforeDeactivation = $member->fresh()->only(['start_date', 'end_date', 'total_client_amount', 'gym_amount', 'trainer_amount', 'trainer_payment_paid']);
         $deactivate = TestAction::make('deactivate')->table($member);
         $duplicateDeactivation = Livewire::test(ListPersonalTrainingMembers::class)->mountAction($deactivate);
         $page->mountAction($deactivate);
@@ -178,12 +191,11 @@ class PersonalTrainingResourceTest extends TestCase
             ->assertCanSeeTableRecords([$active, $expired, $inactive, $paid, $upcoming])
             ->filterTable('trainer', $active->trainer_id)->assertCanSeeTableRecords([$active, $expired, $upcoming])->assertCanNotSeeTableRecords([$inactive, $paid])
             ->resetTableFilters()->filterTable('status', 'active')->assertCanSeeTableRecords([$active, $paid])->assertCanNotSeeTableRecords([$expired, $inactive, $upcoming])
-            ->resetTableFilters()->filterTable('status', 'expired')->assertCanSeeTableRecords([$expired])->assertCanNotSeeTableRecords([$active, $inactive, $paid, $upcoming])
-            ->resetTableFilters()->filterTable('status', 'inactive')->assertCanSeeTableRecords([$inactive])->assertCanNotSeeTableRecords([$active, $expired, $paid, $upcoming])
+            ->resetTableFilters()->filterTable('status', 'completed')->assertCanSeeTableRecords([$expired])->assertCanNotSeeTableRecords([$active, $inactive, $paid, $upcoming])
+            ->resetTableFilters()->filterTable('status', 'cancelled')->assertCanSeeTableRecords([$inactive])->assertCanNotSeeTableRecords([$active, $expired, $paid, $upcoming])
             ->resetTableFilters()->filterTable('status', 'upcoming')->assertCanSeeTableRecords([$upcoming])->assertCanNotSeeTableRecords([$active, $expired, $inactive, $paid])
-            ->assertTableColumnStateSet('status', 'Upcoming', $upcoming)
-            ->assertTableColumnExists('status', fn (TextColumn $column): bool => $column->isBadge() && $column->getColor($column->getState()) === 'info', $upcoming)
-            ->resetTableFilters()->filterTable('member_payment_paid', true)->assertCanSeeTableRecords([$paid])->assertCanNotSeeTableRecords([$active])
+            ->assertTableColumnStateSet('training_status', 'upcoming', $upcoming)
+            ->assertTableColumnExists('training_status', fn (TextColumn $column): bool => $column->isBadge() && $column->getColor($column->getState()) === 'info', $upcoming)
             ->resetTableFilters()->filterTable('trainer_payment_paid', false)->assertCanSeeTableRecords([$active])->assertCanNotSeeTableRecords([$paid]);
         Livewire::test(ListTrainers::class)->assertTableColumnStateSet('personal_training_members_count', 1, $active->trainer);
     }

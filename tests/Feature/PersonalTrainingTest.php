@@ -9,6 +9,7 @@ use Carbon\Carbon;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
@@ -91,14 +92,14 @@ class PersonalTrainingTest extends TestCase
     public static function statuses(): array
     {
         return [
-            [true, '2026-06-01', '2026-06-09', 'Expired'],
+            [true, '2026-06-01', '2026-06-09', 'Completed'],
             [true, '2026-06-01', '2026-06-10', 'Active'],
             [true, '2026-06-01', '2026-06-11', 'Active'],
             [true, '2026-06-10', '2026-06-10', 'Active'],
             [true, '2026-06-11', '2026-06-17', 'Upcoming'],
-            [false, '2026-06-11', '2026-06-17', 'Inactive'],
-            [false, '2026-06-01', '2026-06-09', 'Inactive'],
-            [false, '2026-06-01', '2026-06-11', 'Inactive'],
+            [false, '2026-06-11', '2026-06-17', 'Cancelled'],
+            [false, '2026-06-01', '2026-06-09', 'Cancelled'],
+            [false, '2026-06-01', '2026-06-11', 'Cancelled'],
         ];
     }
 
@@ -113,14 +114,41 @@ class PersonalTrainingTest extends TestCase
     public function test_migrations_roll_back_and_reapply_cleanly(): void
     {
         $this->assertTrue(Schema::hasTable('personal_training_members'));
+        $ledgerMigration = require database_path('migrations/2026_09_09_002809_expand_personal_training_members_for_trainer_ledger.php');
         $membersMigration = require database_path('migrations/2026_09_06_000002_create_personal_training_members_table.php');
         $trainersMigration = require database_path('migrations/2026_09_06_000001_create_trainers_table.php');
+        $ledgerMigration->down();
         $membersMigration->down();
         $trainersMigration->down();
         $this->assertFalse(Schema::hasTable('personal_training_members'));
         $this->assertFalse(Schema::hasTable('trainers'));
         $trainersMigration->up();
         $membersMigration->up();
+        $ledgerMigration->up();
         $this->assertModelExists(PersonalTrainingMember::factory()->create());
+    }
+
+    public function test_ledger_migration_preserves_existing_personal_training_amounts(): void
+    {
+        $ledgerMigration = require database_path('migrations/2026_09_09_002809_expand_personal_training_members_for_trainer_ledger.php');
+        $ledgerMigration->down();
+        $trainer = Trainer::factory()->create();
+        DB::table('personal_training_members')->insert([
+            'member_name' => 'Existing Client',
+            'trainer_id' => $trainer->id,
+            'start_date' => '2026-06-01',
+            'end_date' => '2026-06-30',
+            'monthly_fee' => '1750.50',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $ledgerMigration->up();
+
+        $entry = PersonalTrainingMember::query()->sole();
+        $this->assertSame('Existing Client', $entry->client_name);
+        $this->assertSame('1750.50', $entry->total_client_amount);
+        $this->assertSame('0.00', $entry->gym_amount);
+        $this->assertSame('1750.50', $entry->trainer_amount);
     }
 }

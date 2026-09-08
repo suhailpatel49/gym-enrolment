@@ -6,6 +6,7 @@ use App\Filament\Resources\Trainers\Pages\CreateTrainer;
 use App\Filament\Resources\Trainers\Pages\EditTrainer;
 use App\Filament\Resources\Trainers\Pages\ListTrainers;
 use App\Filament\Resources\Trainers\Pages\ViewTrainer;
+use App\Filament\Resources\Trainers\Pages\ViewTrainerMonth;
 use App\Filament\Resources\Trainers\Schemas\TrainerForm;
 use App\Filament\Resources\Trainers\Schemas\TrainerInfolist;
 use App\Filament\Resources\Trainers\Tables\TrainersTable;
@@ -45,6 +46,7 @@ class TrainerResource extends Resource
             'index' => ListTrainers::route('/'),
             'create' => CreateTrainer::route('/create'),
             'view' => ViewTrainer::route('/{record}'),
+            'month' => ViewTrainerMonth::route('/{record}/ledger/{month}'),
             'edit' => EditTrainer::route('/{record}/edit'),
         ];
     }

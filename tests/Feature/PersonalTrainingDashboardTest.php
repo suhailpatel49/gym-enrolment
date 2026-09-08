@@ -24,13 +24,13 @@ class PersonalTrainingDashboardTest extends TestCase
     }
 
     #[DataProvider('roles')]
-    public function test_four_stats_count_current_members_and_include_seven_day_boundary(UserRole $role): void
+    public function test_three_stats_count_current_members_and_include_seven_day_boundary(UserRole $role): void
     {
         Filament::setCurrentPanel(Filament::getPanel('admin'));
         $this->actingAs(User::factory()->create(['role' => $role]));
         $this->travelTo(Carbon::parse('2026-06-10'));
         PersonalTrainingMember::factory()->create(['end_date' => '2026-06-10']);
-        PersonalTrainingMember::factory()->create(['end_date' => '2026-06-17', 'member_payment_paid' => true]);
+        PersonalTrainingMember::factory()->create(['end_date' => '2026-06-17']);
         PersonalTrainingMember::factory()->create(['end_date' => '2026-06-18', 'trainer_payment_paid' => true]);
         PersonalTrainingMember::factory()->create(['end_date' => '2026-06-09']);
         PersonalTrainingMember::factory()->create(['end_date' => '2026-06-12', 'active' => false]);
@@ -39,9 +39,9 @@ class PersonalTrainingDashboardTest extends TestCase
 
         $widget = Livewire::test(PersonalTrainingStats::class);
         $stats = $widget->instance()->getSchema('content')->getComponents()[0]->getChildSchema()->getComponents();
-        $this->assertCount(4, $stats);
-        $this->assertSame([3, 2, 2, 2], array_map(fn ($stat): int => (int) $stat->getValue(), $stats));
-        $widget->assertSee('Active PT members')->assertSee('Member payments pending')->assertSee('Trainer payments pending')->assertSee('Subscriptions expiring within 7 days');
+        $this->assertCount(3, $stats);
+        $this->assertSame([3, 2, 2], array_map(fn ($stat): int => (int) $stat->getValue(), $stats));
+        $widget->assertSee('Active PT members')->assertSee('Trainer payments pending')->assertSee('Subscriptions expiring within 7 days');
         $this->assertContains(PersonalTrainingStats::class, app(Dashboard::class)->getWidgets());
         $this->get('/admin')->assertOk()->assertSee('Membership overview');
     }

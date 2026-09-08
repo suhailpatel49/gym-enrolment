@@ -10,8 +10,13 @@ use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Validation\ValidationException;
 
-#[Fillable(['member_name', 'phone', 'trainer_id', 'start_date', 'end_date', 'monthly_fee', 'member_payment_paid', 'trainer_payment_paid', 'active'])]
+#[Fillable([
+    'client_name', 'phone', 'trainer_id', 'payment_mode', 'start_date', 'end_date',
+    'total_client_amount', 'gym_amount', 'trainer_amount', 'member_payment_paid',
+    'trainer_payment_paid', 'active', 'remark',
+])]
 class PersonalTrainingMember extends Model
 {
     /** @use HasFactory<PersonalTrainingMemberFactory> */
@@ -21,6 +26,9 @@ class PersonalTrainingMember extends Model
         'active' => true,
         'member_payment_paid' => false,
         'trainer_payment_paid' => false,
+        'payment_mode' => 'Not provided',
+        'gym_amount' => '0.00',
+        'trainer_amount' => '0.00',
     ];
 
     public function trainer(): BelongsTo
@@ -59,11 +67,55 @@ class PersonalTrainingMember extends Model
 
     protected function status(): Attribute
     {
+        return Attribute::get(fn (): string => ucfirst($this->training_status));
+    }
+
+    protected function trainingStatus(): Attribute
+    {
         return Attribute::get(fn (): string => match (true) {
-            ! $this->active => 'Inactive',
-            $this->start_date->gt(today()) => 'Upcoming',
-            $this->end_date->lt(today()) => 'Expired',
-            default => 'Active',
+            ! $this->active => 'cancelled',
+            $this->start_date->gt(today()) => 'upcoming',
+            $this->end_date->lt(today()) => 'completed',
+            default => 'active',
+        });
+    }
+
+    protected function trainerSettlementStatus(): Attribute
+    {
+        return Attribute::get(fn (): string => $this->trainer_payment_paid ? 'paid' : 'pending');
+    }
+
+    protected function splitClassification(): Attribute
+    {
+        return Attribute::get(fn (): string => self::amountInCents($this->gym_amount) === 0
+            ? 'Trainer RCVD Full Payment'
+            : 'Gym Retained Commission');
+    }
+
+    public static function amountInCents(string|int|float $amount): int
+    {
+        $amount = (string) $amount;
+
+        if (! preg_match('/^\d+(?:\.\d{1,2})?$/', $amount)) {
+            throw ValidationException::withMessages(['amount' => 'Amounts must be nonnegative with at most two decimal places.']);
+        }
+
+        [$whole, $fraction] = array_pad(explode('.', $amount, 2), 2, '');
+
+        return ((int) $whole * 100) + (int) str_pad($fraction, 2, '0');
+    }
+
+    protected static function booted(): void
+    {
+        static::saving(function (PersonalTrainingMember $entry): void {
+            $totalClientAmount = self::amountInCents($entry->total_client_amount);
+            $gymAmount = self::amountInCents($entry->gym_amount);
+
+            if ($gymAmount > $totalClientAmount) {
+                throw ValidationException::withMessages(['gym_amount' => 'The gym amount may not exceed the total client amount.']);
+            }
+
+            $entry->trainer_amount = number_format(($totalClientAmount - $gymAmount) / 100, 2, '.', '');
         });
     }
 
@@ -73,7 +125,9 @@ class PersonalTrainingMember extends Model
             'trainer_id' => 'integer',
             'start_date' => 'date',
             'end_date' => 'date',
-            'monthly_fee' => 'decimal:2',
+            'total_client_amount' => 'decimal:2',
+            'gym_amount' => 'decimal:2',
+            'trainer_amount' => 'decimal:2',
             'active' => 'boolean',
             'member_payment_paid' => 'boolean',
             'trainer_payment_paid' => 'boolean',
