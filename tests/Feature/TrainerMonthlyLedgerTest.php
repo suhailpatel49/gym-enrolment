@@ -258,6 +258,8 @@ class TrainerMonthlyLedgerTest extends TestCase
         $this->get(TrainerResource::getUrl('view', ['record' => $trainer]))
             ->assertOk()
             ->assertSee('Monthly PT ledger')
+            ->assertSee('Trainer RCVD Full Payment')
+            ->assertSee('Gym Retained Commission')
             ->assertSee('June 2026')
             ->assertSee('Payouts pending')
             ->assertSee('Settled')

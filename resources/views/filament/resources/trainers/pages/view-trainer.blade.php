@@ -15,8 +15,8 @@
                         <tr>
                             <th scope="col" class="px-4 py-3">Month</th>
                             <th scope="col" class="px-4 py-3 text-center">PT entries</th>
-                            <th scope="col" class="px-4 py-3 text-center">Trainer RCVD full payment</th>
-                            <th scope="col" class="px-4 py-3 text-center">Gym retained commission</th>
+                            <th scope="col" class="px-4 py-3 text-center">Trainer RCVD Full Payment</th>
+                            <th scope="col" class="px-4 py-3 text-center">Gym Retained Commission</th>
                             <th scope="col" class="px-4 py-3 text-center">Paid</th>
                             <th scope="col" class="px-4 py-3 text-center">Pending</th>
                             <th scope="col" class="px-4 py-3 text-right">Client total</th>
