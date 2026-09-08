@@ -131,6 +131,53 @@ class PersonalTrainingTest extends TestCase
         $this->assertModelExists(PersonalTrainingMember::factory()->create());
     }
 
+    public function test_money_invariant_migration_can_be_retried_after_invalid_legacy_data_is_repaired(): void
+    {
+        $moneyInvariantMigration = require database_path('migrations/2026_09_09_011948_enforce_personal_training_member_money_invariants.php');
+        $moneyInvariantMigration->down();
+        $trainer = Trainer::factory()->create();
+        $memberId = DB::table('personal_training_members')->insertGetId([
+            'client_name' => 'Invalid legacy split',
+            'trainer_id' => $trainer->id,
+            'start_date' => '2026-06-01',
+            'end_date' => '2026-06-30',
+            'total_client_amount' => '10.00',
+            'gym_amount' => '1.00',
+            'trainer_amount' => '8.99',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        try {
+            $moneyInvariantMigration->up();
+            $this->fail('The migration accepted an invalid legacy money split.');
+        } catch (\RuntimeException $exception) {
+            $this->assertStringContainsString('existing personal training', strtolower($exception->getMessage()));
+            $this->assertStringContainsString('repair', strtolower($exception->getMessage()));
+        }
+
+        $this->assertSame([], $this->moneyInvariantTriggerNames());
+
+        DB::table('personal_training_members')->where('id', $memberId)->update([
+            'trainer_amount' => '9.00',
+        ]);
+
+        $moneyInvariantMigration->up();
+        $this->assertSame([
+            'personal_training_members_money_insert',
+            'personal_training_members_money_update',
+        ], $this->moneyInvariantTriggerNames());
+
+        $moneyInvariantMigration->down();
+        $this->assertSame([], $this->moneyInvariantTriggerNames());
+
+        $moneyInvariantMigration->up();
+        $this->assertSame([
+            'personal_training_members_money_insert',
+            'personal_training_members_money_update',
+        ], $this->moneyInvariantTriggerNames());
+    }
+
     public function test_ledger_migration_preserves_existing_personal_training_amounts(): void
     {
         $moneyInvariantMigration = require database_path('migrations/2026_09_09_011948_enforce_personal_training_member_money_invariants.php');
@@ -156,5 +203,17 @@ class PersonalTrainingTest extends TestCase
         $this->assertSame('1750.50', $entry->total_client_amount);
         $this->assertSame('0.00', $entry->gym_amount);
         $this->assertSame('1750.50', $entry->trainer_amount);
+    }
+
+    /** @return list<string> */
+    private function moneyInvariantTriggerNames(): array
+    {
+        return array_column(DB::select(<<<'SQL'
+            SELECT name
+            FROM sqlite_master
+            WHERE type = 'trigger'
+                AND name LIKE 'personal_training_members_money_%'
+            ORDER BY name
+        SQL), 'name');
     }
 }
