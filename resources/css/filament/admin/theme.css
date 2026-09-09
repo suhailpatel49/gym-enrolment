@@ -51,11 +51,10 @@
 
 @layer components {
     .fi-body {
-        @apply bg-canvas text-tertiary;
+        @apply bg-canvas text-tertiary dark:bg-gray-950 dark:text-white;
     }
 
-    .fi-sidebar,
-    .fi-topbar nav {
+    .fi-sidebar {
         @apply bg-secondary text-white;
     }
 

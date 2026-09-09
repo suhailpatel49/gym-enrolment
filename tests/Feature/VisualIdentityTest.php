@@ -119,6 +119,49 @@ class VisualIdentityTest extends TestCase
         $this->assertSame('#F41E1E', $panel->getColors()['primary']);
     }
 
+    public function test_filament_theme_keeps_dark_chrome_separate_from_adaptive_content(): void
+    {
+        $theme = file_get_contents(resource_path('css/filament/admin/theme.css'));
+
+        $this->assertStringContainsString(
+            '@apply bg-canvas text-tertiary dark:bg-gray-950 dark:text-white;',
+            $theme,
+        );
+        $this->assertMatchesRegularExpression(
+            '/\.fi-sidebar\s*\{\s*@apply bg-secondary text-white;\s*\}/',
+            $theme,
+        );
+        $this->assertStringNotContainsString('.fi-topbar nav', $theme);
+        $this->assertDoesNotMatchRegularExpression(
+            '/\.fi-topbar[^,{]*\{[^}]*\b(?:bg-secondary|text-white)\b/s',
+            $theme,
+        );
+        $this->assertMatchesRegularExpression(
+            '/\.fi-btn\.fi-color-primary\s*\{\s*@apply bg-tertiary text-white [^;]+;\s*\}/',
+            $theme,
+        );
+
+        foreach ([
+            '.fi-header-heading',
+            '.fi-breadcrumbs',
+            '.fi-section-header-heading',
+            '.fi-in-entry-label',
+            '.fi-in-text-item',
+            '.fi-ta-text-item',
+            '.fi-fo-field-label-content',
+            '.fi-sc-text',
+            '.fi-fo-field-wrp-error-message',
+            '.fi-empty-state-heading',
+            '.fi-empty-state-description',
+        ] as $contentSelector) {
+            $this->assertDoesNotMatchRegularExpression(
+                '/'.preg_quote($contentSelector, '/').'[^{}]*\{[^{}]*@apply[^;]*\btext-white\b(?![^;]*\bdark:)/s',
+                $theme,
+                "The {$contentSelector} content selector must not force a light foreground.",
+            );
+        }
+    }
+
     public function test_html_mail_is_branded_table_safe_and_keeps_dynamic_data(): void
     {
         $enrollment = Enrollment::factory()->create([
