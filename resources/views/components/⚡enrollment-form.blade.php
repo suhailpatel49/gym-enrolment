@@ -115,12 +115,19 @@ new class extends Component
     public function review(): void
     {
         $attributes = $this->validatedEnrollmentData();
+        $activeDecisionToken = session()->get('enrollment_reviews.active');
+
+        if (is_string($activeDecisionToken)) {
+            session()->forget('enrollment_reviews.'.$activeDecisionToken);
+        }
+
         $this->reviewReference = 'IF-'.now()->format('Ymd').'-'.Str::upper(Str::random(6));
         $this->decisionToken = Str::random(64);
         session()->put($this->reviewSessionKey(), [
             'reference' => $this->reviewReference,
             'attributes' => $attributes,
         ]);
+        session()->put('enrollment_reviews.active', $this->decisionToken);
         $this->reviewing = true;
     }
 
@@ -158,6 +165,15 @@ new class extends Component
 
         if (! $this->reviewing || $this->reviewReference === null || $this->decisionToken === null) {
             $this->addError('review', 'Review the enrollment before recording a decision.');
+
+            return;
+        }
+
+        $activeDecisionToken = session()->get('enrollment_reviews.active');
+
+        if (! is_string($activeDecisionToken) || ! hash_equals($activeDecisionToken, $this->decisionToken)) {
+            $this->invalidateReview();
+            $this->addError('review', 'The enrollment changed or the review expired. Review it again before recording a decision.');
 
             return;
         }
@@ -260,6 +276,12 @@ new class extends Component
     {
         if ($this->decisionToken !== null) {
             session()->forget($this->reviewSessionKey());
+
+            $activeDecisionToken = session()->get('enrollment_reviews.active');
+
+            if (is_string($activeDecisionToken) && hash_equals($activeDecisionToken, $this->decisionToken)) {
+                session()->forget('enrollment_reviews.active');
+            }
         }
 
         $this->reviewing = false;

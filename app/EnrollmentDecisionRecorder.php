@@ -15,7 +15,9 @@ class EnrollmentDecisionRecorder
      */
     public function record(string $decisionTokenHash, string $referenceCode, array $attributes, string $decision): Enrollment
     {
-        $this->assertAtomicDatabaseQueue();
+        if ($decision === 'approved') {
+            $this->assertAtomicDatabaseQueue();
+        }
 
         return DB::transaction(function () use ($decisionTokenHash, $referenceCode, $attributes, $decision): Enrollment {
             $enrollment = Enrollment::query()->firstOrCreate(
@@ -30,7 +32,7 @@ class EnrollmentDecisionRecorder
 
             if ($enrollment->wasRecentlyCreated && $decision === 'approved') {
                 Mail::to($enrollment->email)->queue(
-                    (new EnrollmentConfirmation($enrollment))->onConnection('database')->beforeCommit(),
+                    (new EnrollmentConfirmation($enrollment))->beforeCommit(),
                 );
             }
 
@@ -43,8 +45,10 @@ class EnrollmentDecisionRecorder
         $enrollmentConnection = (new Enrollment)->getConnectionName() ?? config('database.default');
         $queueConnection = config('queue.connections.database.connection') ?? config('database.default');
 
-        if (config('queue.connections.database.driver') !== 'database' || $queueConnection !== $enrollmentConnection) {
-            throw new LogicException('Enrollment confirmation queue must use the enrollment database connection.');
+        if (config('queue.default') !== 'database'
+            || config('queue.connections.database.driver') !== 'database'
+            || $queueConnection !== $enrollmentConnection) {
+            throw new LogicException('The default enrollment confirmation queue must use the enrollment database connection.');
         }
     }
 }

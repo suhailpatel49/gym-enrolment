@@ -78,6 +78,8 @@ class EnrollmentFormTest extends TestCase
 
     public function test_custom_package_months_and_payment_values_are_preserved(): void
     {
+        config()->set('queue.default', 'database');
+        config()->set('queue.connections.database.connection', null);
         Mail::fake();
 
         Livewire::test('enrollment-form')

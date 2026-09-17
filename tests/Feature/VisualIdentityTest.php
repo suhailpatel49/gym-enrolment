@@ -99,6 +99,8 @@ class VisualIdentityTest extends TestCase
 
     public function test_enrollment_validation_and_success_have_accessible_states(): void
     {
+        config()->set('queue.default', 'database');
+        config()->set('queue.connections.database.connection', null);
         Mail::fake();
 
         Livewire::test('enrollment-form')

@@ -16,6 +16,21 @@ class EnrollmentDecisionDurabilityTest extends TestCase
 {
     use LazilyRefreshDatabase;
 
+    public function test_non_database_default_queue_fails_closed_before_persistence(): void
+    {
+        $this->useDatabaseQueue();
+        config()->set('queue.default', 'sync');
+
+        $this->completedForm()
+            ->call('review')
+            ->call('approve')
+            ->assertHasErrors('review')
+            ->assertSee('could not record your enrollment');
+
+        $this->assertDatabaseCount('enrollments', 0);
+        $this->assertDatabaseCount('jobs', 0);
+    }
+
     public function test_queue_insertion_failure_rolls_back_and_retry_creates_one_enrollment_and_job(): void
     {
         $this->useDatabaseQueue();
@@ -35,6 +50,25 @@ class EnrollmentDecisionDurabilityTest extends TestCase
         $this->assertDatabaseCount('enrollments', 1);
         $this->assertDatabaseCount('jobs', 1);
         $this->assertSame(EnrollmentConfirmation::class, $this->queuedPayload()['displayName']);
+    }
+
+    public function test_default_database_worker_can_drain_a_confirmation_without_external_mail(): void
+    {
+        $this->useDatabaseQueue();
+        config()->set('mail.default', 'array');
+
+        $this->completedForm()->call('review')->call('approve')->assertHasNoErrors();
+
+        $this->assertDatabaseCount('enrollments', 1);
+        $this->assertDatabaseCount('jobs', 1);
+
+        $this->artisan('queue:work', [
+            '--once' => true,
+            '--no-interaction' => true,
+        ])->assertSuccessful();
+
+        $this->assertDatabaseCount('jobs', 0);
+        $this->assertDatabaseCount('failed_jobs', 0);
     }
 
     public function test_response_loss_and_conflicting_stale_decisions_return_the_original_approved_result_once(): void
@@ -62,6 +96,40 @@ class EnrollmentDecisionDurabilityTest extends TestCase
                 && str_contains($html, $reference)
                 && ! str_contains($html, 'Enrollment rejected'));
         }
+
+        $this->assertSame('approved', Enrollment::query()->sole()->approval_status);
+        $this->assertDatabaseCount('enrollments', 1);
+        $this->assertDatabaseCount('jobs', 1);
+        $this->assertSame(EnrollmentConfirmation::class, $this->queuedPayload()['displayName']);
+    }
+
+    public function test_only_the_latest_http_review_snapshot_can_record_a_decision(): void
+    {
+        config()->set('app.key', 'base64:'.base64_encode(str_repeat('a', 32)));
+        $this->useDatabaseQueue();
+
+        $page = $this->withSession(['tablet_authenticated' => true])
+            ->get(route('enrollment.create'))
+            ->assertOk();
+        $firstReview = $this->livewireUpdate($this->snapshotFrom($page), $this->httpFormUpdates(), 'review')->assertOk();
+        $firstReviewSnapshot = $firstReview->json('components.0.snapshot');
+
+        Livewire::flushState();
+        $secondReview = $this->livewireUpdate($firstReviewSnapshot, [], 'review')->assertOk();
+        $secondReviewSnapshot = $secondReview->json('components.0.snapshot');
+
+        Livewire::flushState();
+        $this->livewireUpdate($firstReviewSnapshot, [], 'reject')
+            ->assertOk()
+            ->assertJsonPath('components.0.effects.html', fn (string $html): bool => str_contains($html, 'review expired'));
+
+        $this->assertDatabaseCount('enrollments', 0);
+        $this->assertDatabaseCount('jobs', 0);
+
+        Livewire::flushState();
+        $this->livewireUpdate($secondReviewSnapshot, [], 'approve')
+            ->assertOk()
+            ->assertJsonPath('components.0.effects.html', fn (string $html): bool => str_contains($html, 'Enrollment approved'));
 
         $this->assertSame('approved', Enrollment::query()->sole()->approval_status);
         $this->assertDatabaseCount('enrollments', 1);

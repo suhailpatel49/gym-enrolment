@@ -112,6 +112,8 @@ class EnrollmentReviewDecisionTest extends TestCase
 
     public function test_approve_persists_an_approved_enrollment_and_queues_one_member_confirmation(): void
     {
+        config()->set('queue.default', 'database');
+        config()->set('queue.connections.database.connection', null);
         Mail::fake();
 
         $component = $this->completedForm()->call('review');
