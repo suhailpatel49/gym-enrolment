@@ -31,6 +31,21 @@ class EnrollmentDecisionDurabilityTest extends TestCase
         $this->assertDatabaseCount('jobs', 0);
     }
 
+    public function test_non_default_database_queue_name_fails_closed_before_persistence(): void
+    {
+        $this->useDatabaseQueue();
+        config()->set('queue.connections.database.queue', 'unconsumed');
+
+        $this->completedForm()
+            ->call('review')
+            ->call('approve')
+            ->assertHasErrors('review')
+            ->assertSee('could not record your enrollment');
+
+        $this->assertDatabaseCount('enrollments', 0);
+        $this->assertDatabaseCount('jobs', 0);
+    }
+
     public function test_queue_insertion_failure_rolls_back_and_retry_creates_one_enrollment_and_job(): void
     {
         $this->useDatabaseQueue();
@@ -62,13 +77,27 @@ class EnrollmentDecisionDurabilityTest extends TestCase
         $this->assertDatabaseCount('enrollments', 1);
         $this->assertDatabaseCount('jobs', 1);
 
-        $this->artisan('queue:work', [
-            '--once' => true,
-            '--no-interaction' => true,
-        ])->assertSuccessful();
+        $this->artisan('queue:work database --queue=default --once --tries=1 --no-interaction')
+            ->assertSuccessful();
 
         $this->assertDatabaseCount('jobs', 0);
         $this->assertDatabaseCount('failed_jobs', 0);
+    }
+
+    public function test_rejection_succeeds_without_a_job_when_the_approval_queue_name_is_incompatible(): void
+    {
+        $this->useDatabaseQueue();
+        config()->set('queue.connections.database.queue', 'unconsumed');
+
+        $this->completedForm()
+            ->call('review')
+            ->call('reject')
+            ->assertHasNoErrors()
+            ->assertSee('Enrollment rejected');
+
+        $this->assertSame('rejected', Enrollment::query()->sole()->approval_status);
+        $this->assertDatabaseCount('enrollments', 1);
+        $this->assertDatabaseCount('jobs', 0);
     }
 
     public function test_response_loss_and_conflicting_stale_decisions_return_the_original_approved_result_once(): void
@@ -152,6 +181,7 @@ class EnrollmentDecisionDurabilityTest extends TestCase
     {
         config()->set('queue.default', 'database');
         config()->set('queue.connections.database.connection', null);
+        config()->set('queue.connections.database.queue', 'default');
         config()->set('queue.connections.database.after_commit', false);
     }
 

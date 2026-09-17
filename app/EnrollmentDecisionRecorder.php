@@ -47,6 +47,7 @@ class EnrollmentDecisionRecorder
 
         if (config('queue.default') !== 'database'
             || config('queue.connections.database.driver') !== 'database'
+            || config('queue.connections.database.queue') !== 'default'
             || $queueConnection !== $enrollmentConnection) {
             throw new LogicException('The default enrollment confirmation queue must use the enrollment database connection.');
         }
