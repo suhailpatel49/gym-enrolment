@@ -18,7 +18,11 @@ class EnrollmentInfolist
                     ->label('Approval status')
                     ->badge()
                     ->formatStateUsing(fn (string $state): string => ucfirst($state))
-                    ->color(fn (string $state): string => $state === 'pending' ? 'warning' : 'success'),
+                    ->color(fn (string $state): string => match ($state) {
+                        'approved' => 'success',
+                        'rejected' => 'danger',
+                        default => 'warning',
+                    }),
                 TextEntry::make('reference_code')
                     ->label('Reference')
                     ->copyable(),

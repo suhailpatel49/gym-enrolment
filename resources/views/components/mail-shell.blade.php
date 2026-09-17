@@ -1,4 +1,4 @@
-@props(['title', 'preheader'])
+@props(['title', 'preheader', 'showFooter' => true])
 
 <!DOCTYPE html>
 <html lang="en">
@@ -36,12 +36,14 @@
                     </tr>
                     <tr><td style="height:16px;"></td></tr>
                     {{ $slot }}
-                    <tr>
-                        <td style="padding:22px 18px 6px; color:#6A6A6A; font-size:11px; line-height:1.6; text-align:center;">
-                            This is an automated email from {{ config('app.name') }}.<br>
-                            Please keep this message for your records.
-                        </td>
-                    </tr>
+                    @if ($showFooter)
+                        <tr>
+                            <td style="padding:22px 18px 6px; color:#6A6A6A; font-size:11px; line-height:1.6; text-align:center;">
+                                This is an automated email from {{ config('app.name') }}.<br>
+                                Please keep this message for your records.
+                            </td>
+                        </tr>
+                    @endif
                 </table>
             </td>
         </tr>

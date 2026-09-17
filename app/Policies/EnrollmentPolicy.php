@@ -17,11 +17,6 @@ class EnrollmentPolicy
         return $user->isAdmin() || $user->isStaff();
     }
 
-    public function approve(User $user, Enrollment $enrollment): bool
-    {
-        return $user->isAdmin() || $user->isStaff();
-    }
-
     public function create(User $user): bool
     {
         return $user->isAdmin();

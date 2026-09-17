@@ -2,7 +2,6 @@
 
 namespace App\Filament\Resources\Enrollments\Pages;
 
-use App\Filament\Resources\Enrollments\Actions\ApproveEnrollmentAction;
 use App\Filament\Resources\Enrollments\Actions\DownloadConfirmationAction;
 use App\Filament\Resources\Enrollments\Actions\MarkBalancePaidAction;
 use App\Filament\Resources\Enrollments\Actions\SendConfirmationEmailAction;
@@ -16,7 +15,6 @@ class ViewEnrollment extends ViewRecord
     protected function getHeaderActions(): array
     {
         return [
-            ApproveEnrollmentAction::make(),
             DownloadConfirmationAction::make(),
             SendConfirmationEmailAction::make(),
             MarkBalancePaidAction::make(),

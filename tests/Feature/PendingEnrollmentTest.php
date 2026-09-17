@@ -109,7 +109,7 @@ class PendingEnrollmentTest extends TestCase
 
             return array_slice($matches[1], 1);
         };
-        $this->assertCount(6, $values($before));
+        $this->assertCount(5, $values($before));
         $this->assertSame($values($before), $values($after));
     }
 

@@ -99,13 +99,14 @@ class VisualIdentityTest extends TestCase
     public function test_enrollment_validation_and_success_have_accessible_states(): void
     {
         Livewire::test('enrollment-form')
-            ->call('submit')
+            ->call('review')
             ->assertSeeHtml('role="alert"')
             ->assertSeeHtml('aria-invalid="true"')
             ->assertSeeHtml('aria-describedby="fullName-error"');
 
         Livewire::test('enrollment-form')
             ->set('submittedReference', 'IF-VISUAL-TEST')
+            ->set('submittedDecision', 'approved')
             ->assertSeeHtml('data-state="success"')
             ->assertSee('IF-VISUAL-TEST');
     }

@@ -1,4 +1,4 @@
-<x-mail-shell title="Membership confirmation" preheader="Your membership enrollment has been received.">
+<x-mail-shell title="Membership confirmation" preheader="Your membership enrollment has been received." :show-footer="false">
     <tr>
         <td class="email-padding" style="padding:23px 26px; background:#FFFFFF; border:1px solid #D8DDE1; border-radius:12px;">
             <p style="margin:0 0 16px; color:#171717; font-size:15px; line-height:1.6;">Hello {{ $enrollment->full_name }},</p>

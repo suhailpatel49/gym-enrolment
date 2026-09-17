@@ -2,7 +2,6 @@
 
 namespace App\Filament\Resources\Enrollments\Tables;
 
-use App\Filament\Resources\Enrollments\Actions\ApproveEnrollmentAction;
 use App\Filament\Resources\Enrollments\Actions\DownloadConfirmationAction;
 use App\Filament\Resources\Enrollments\Actions\MarkBalancePaidAction;
 use App\Filament\Resources\Enrollments\Actions\SendConfirmationEmailAction;
@@ -29,7 +28,11 @@ class EnrollmentsTable
                     ->label('Approval status')
                     ->badge()
                     ->formatStateUsing(fn (string $state): string => ucfirst($state))
-                    ->color(fn (string $state): string => $state === 'pending' ? 'warning' : 'success'),
+                    ->color(fn (string $state): string => match ($state) {
+                        'approved' => 'success',
+                        'rejected' => 'danger',
+                        default => 'warning',
+                    }),
                 TextColumn::make('reference_code')
                     ->label('Reference')
                     ->copyable()
@@ -85,7 +88,11 @@ class EnrollmentsTable
             ->filters([
                 SelectFilter::make('approval_status')
                     ->label('Approval status')
-                    ->options(['pending' => 'Pending', 'approved' => 'Approved']),
+                    ->options([
+                        'pending' => 'Pending',
+                        'approved' => 'Approved',
+                        'rejected' => 'Rejected',
+                    ]),
                 SelectFilter::make('membership_status')
                     ->label('Membership status')
                     ->options([
@@ -242,7 +249,6 @@ class EnrollmentsTable
             ->filtersFormColumns(2)
             ->recordActions([
                 ViewAction::make(),
-                ApproveEnrollmentAction::make(),
                 DownloadConfirmationAction::make(),
                 SendConfirmationEmailAction::make(),
                 MarkBalancePaidAction::make(),

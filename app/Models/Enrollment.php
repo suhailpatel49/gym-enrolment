@@ -2,23 +2,19 @@
 
 namespace App\Models;
 
-use App\Mail\EnrollmentConfirmation;
 use Database\Factories\EnrollmentFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Facades\Mail;
 
 #[Fillable([
     'user_id', 'reference_code', 'email', 'full_name', 'address', 'mobile_number',
     'emergency_contact', 'date_of_birth', 'package_months', 'membership_package', 'freezing_enabled',
     'freezing_days', 'payment_mode', 'amount_paid', 'membership_start_date',
     'membership_end_date', 'has_balance', 'remaining_balance',
-    'balance_due_date', 'terms_accepted', 'approval_status',
+    'balance_due_date', 'terms_accepted', 'approval_status', 'approved_at',
 ])]
 class Enrollment extends Model
 {
@@ -27,35 +23,22 @@ class Enrollment extends Model
 
     public const TERMS_ACCEPTANCE_TEXT = 'I accept the gym rules, membership terms, freezing policy, and billing policy.';
 
+    public const MEMBERSHIP_TERMS = [
+        'Membership fees are non-refundable under any circumstances.',
+        'Membership does not cover medical conditions or accidents.',
+        'Additional charges apply for membership freezing and transfer, as per terms and conditions.',
+        'Any outstanding membership balance must be cleared or upgraded within 15 days.',
+        'Failure to clear dues within 15 days will result in automatic membership downgrade.',
+        'Management is not liable for any injury, illness, or loss of life.',
+        'Membership can only be transferred to a new member.',
+        'The gym is not responsible for loss of belongings or damage.',
+    ];
+
     protected $attributes = ['approval_status' => 'approved'];
 
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
-    }
-
-    public function approve(User $actor): bool
-    {
-        Gate::forUser($actor)->authorize('approve', $this);
-
-        return DB::transaction(function () use ($actor): bool {
-            $record = static::query()->lockForUpdate()->findOrFail($this->getKey());
-
-            if ($record->approval_status !== 'pending') {
-                $this->refresh();
-
-                return false;
-            }
-
-            $record->approval_status = 'approved';
-            $record->approved_by = $actor->getKey();
-            $record->approved_at = now();
-            $record->save();
-            Mail::to($record->email)->queue(new EnrollmentConfirmation($record));
-            $this->refresh();
-
-            return true;
-        }, attempts: 5);
     }
 
     public function settleOutstandingBalance(): bool
@@ -79,7 +62,7 @@ class Enrollment extends Model
      */
     public function selectedTerms(): array
     {
-        return $this->terms_accepted ? [self::TERMS_ACCEPTANCE_TEXT] : [];
+        return $this->terms_accepted ? self::MEMBERSHIP_TERMS : [];
     }
 
     protected function casts(): array

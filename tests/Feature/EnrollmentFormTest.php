@@ -2,8 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Mail\EnrollmentConfirmation;
-use App\Mail\NewEnrollmentNotification;
 use App\Models\Enrollment;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -15,10 +13,26 @@ class EnrollmentFormTest extends TestCase
 {
     use LazilyRefreshDatabase;
 
+    public function test_the_form_lists_all_membership_terms_in_order_and_keeps_the_acceptance_sentence(): void
+    {
+        Livewire::test('enrollment-form')
+            ->assertSeeInOrder([
+                'Membership fees are non-refundable under any circumstances.',
+                'Membership does not cover medical conditions or accidents.',
+                'Additional charges apply for membership freezing and transfer, as per terms and conditions.',
+                'Any outstanding membership balance must be cleared or upgraded within 15 days.',
+                'Failure to clear dues within 15 days will result in automatic membership downgrade.',
+                'Management is not liable for any injury, illness, or loss of life.',
+                'Membership can only be transferred to a new member.',
+                'The gym is not responsible for loss of belongings or damage.',
+                'I accept the gym rules, membership terms, freezing policy, and billing policy.',
+            ]);
+    }
+
     public function test_required_fields_are_validated(): void
     {
         Livewire::test('enrollment-form')
-            ->call('submit')
+            ->call('review')
             ->assertHasErrors([
                 'email',
                 'fullName',
@@ -62,51 +76,6 @@ class EnrollmentFormTest extends TestCase
             ->assertSet('remainingBalance', '0.01');
     }
 
-    public function test_enrollment_is_pending_and_only_the_gym_email_is_queued(): void
-    {
-        Mail::fake();
-        config()->set('gym.email', 'gym@example.com');
-
-        Livewire::test('enrollment-form')
-            ->set('email', 'member@example.com')
-            ->set('fullName', 'Asha Patel')
-            ->set('address', '12 Hill Road')
-            ->set('mobileNumber', '9876543210')
-            ->set('emergencyContact', '9988776655')
-            ->set('dateOfBirth', '1995-05-10')
-            ->set('packageMonths', '3')
-            ->set('freezingEnabled', false)
-            ->set('paymentMode', 'gpay')
-            ->set('amountPaid', '6000')
-            ->set('membershipStartDate', '2026-09-01')
-            ->set('hasBalance', false)
-            ->set('termsAccepted', true)
-            ->call('submit')
-            ->assertHasNoErrors()
-            ->assertNotSet('submittedReference', null)
-            ->assertSee('Enrollment submitted for approval')
-            ->assertSee('Your confirmation will be emailed after approval.')
-            ->assertDontSee('Enrollment complete')
-            ->assertDontSee('Please check your email');
-
-        $enrollment = Enrollment::query()->firstOrFail();
-
-        $this->assertSame('Asha Patel', $enrollment->full_name);
-        $this->assertSame('3 Months', $enrollment->membership_package);
-        $this->assertSame('2026-11-30', $enrollment->membership_end_date->toDateString());
-
-        $this->assertSame('pending', $enrollment->approval_status);
-        $this->assertNull($enrollment->approved_by);
-        $this->assertNull($enrollment->approved_at);
-        Mail::assertNotQueued(EnrollmentConfirmation::class);
-        Mail::assertQueued(
-            NewEnrollmentNotification::class,
-            fn (NewEnrollmentNotification $mail): bool => $mail->hasTo('gym@example.com'),
-        );
-
-        Mail::assertQueuedCount(1);
-    }
-
     public function test_custom_package_months_and_payment_values_are_preserved(): void
     {
         Mail::fake();
@@ -128,7 +97,8 @@ class EnrollmentFormTest extends TestCase
             ->set('remainingBalance', '500')
             ->set('balanceDueDate', '2026-09-10')
             ->set('termsAccepted', true)
-            ->call('submit')
+            ->call('review')
+            ->call('approve')
             ->assertHasNoErrors();
 
         $enrollment = Enrollment::query()->firstOrFail();

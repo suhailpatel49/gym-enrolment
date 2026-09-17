@@ -16,6 +16,6 @@ class AdminDashboardTest extends TestCase
             ->get('/admin')
             ->assertOk()
             ->assertSee('Membership overview')
-            ->assertSee('Monitor pending review, personal training, memberships, collections, balances, and renewals.');
+            ->assertSee('Monitor personal training, memberships, collections, balances, and renewals.');
     }
 }

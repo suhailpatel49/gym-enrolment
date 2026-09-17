@@ -16,6 +16,17 @@ class EnrollmentConfirmationPdfTest extends TestCase
 {
     use LazilyRefreshDatabase;
 
+    private const MEMBERSHIP_TERMS = [
+        'Membership fees are non-refundable under any circumstances.',
+        'Membership does not cover medical conditions or accidents.',
+        'Additional charges apply for membership freezing and transfer, as per terms and conditions.',
+        'Any outstanding membership balance must be cleared or upgraded within 15 days.',
+        'Failure to clear dues within 15 days will result in automatic membership downgrade.',
+        'Management is not liable for any injury, illness, or loss of life.',
+        'Membership can only be transferred to a new member.',
+        'The gym is not responsible for loss of belongings or damage.',
+    ];
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -77,14 +88,24 @@ class EnrollmentConfirmationPdfTest extends TestCase
             'enrollment' => $unacceptedEnrollment,
         ])->render();
 
-        $this->assertStringContainsString(
-            'I accept the gym rules, membership terms, freezing policy, and billing policy.',
-            $acceptedHtml,
-        );
+        $this->assertStringContainsString('Terms accepted', $acceptedHtml);
+        $this->assertStringNotContainsString(Enrollment::TERMS_ACCEPTANCE_TEXT, $acceptedHtml);
+        $this->assertStringContainsString('Keep this confirmation for your records.', $acceptedHtml);
+        $previousPosition = -1;
+
+        foreach (self::MEMBERSHIP_TERMS as $term) {
+            $position = strpos($acceptedHtml, $term);
+
+            $this->assertNotFalse($position, "Failed asserting that the PDF contains: {$term}");
+            $this->assertGreaterThan($previousPosition, $position, "Failed asserting that the PDF term appears in order: {$term}");
+
+            $previousPosition = $position;
+        }
+
         $this->assertStringNotContainsString('Terms accepted', $unacceptedHtml);
-        $this->assertStringNotContainsString(
-            'I accept the gym rules, membership terms, freezing policy, and billing policy.',
-            $unacceptedHtml,
-        );
+
+        foreach (self::MEMBERSHIP_TERMS as $term) {
+            $this->assertStringNotContainsString($term, $unacceptedHtml);
+        }
     }
 }

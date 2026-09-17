@@ -24,5 +24,3 @@ Terms accepted:
 - {{ $term }}
 @endforeach
 @endif
-
-Please keep this message for your records.
