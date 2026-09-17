@@ -8,6 +8,7 @@ use App\Mail\NewEnrollmentNotification;
 use App\Models\Enrollment;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
+use Illuminate\Support\Facades\Mail;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -98,6 +99,8 @@ class VisualIdentityTest extends TestCase
 
     public function test_enrollment_validation_and_success_have_accessible_states(): void
     {
+        Mail::fake();
+
         Livewire::test('enrollment-form')
             ->call('review')
             ->assertSeeHtml('role="alert"')
@@ -105,10 +108,21 @@ class VisualIdentityTest extends TestCase
             ->assertSeeHtml('aria-describedby="fullName-error"');
 
         Livewire::test('enrollment-form')
-            ->set('submittedReference', 'IF-VISUAL-TEST')
-            ->set('submittedDecision', 'approved')
+            ->set('email', 'member@example.com')
+            ->set('fullName', 'Asha Patel')
+            ->set('mobileNumber', '9876543210')
+            ->set('dateOfBirth', '1995-05-10')
+            ->set('packageMonths', '3')
+            ->set('freezingEnabled', false)
+            ->set('paymentMode', 'cash')
+            ->set('amountPaid', '4500')
+            ->set('membershipStartDate', '2026-09-01')
+            ->set('hasBalance', false)
+            ->set('termsAccepted', true)
+            ->call('review')
+            ->call('approve')
             ->assertSeeHtml('data-state="success"')
-            ->assertSee('IF-VISUAL-TEST');
+            ->assertSee('Enrollment approved');
     }
 
     public function test_filament_panel_uses_the_local_incline_theme(): void

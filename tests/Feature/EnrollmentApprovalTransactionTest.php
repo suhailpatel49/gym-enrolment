@@ -4,8 +4,10 @@ namespace Tests\Feature;
 
 use App\Models\Enrollment;
 use App\Models\PersonalTrainingMember;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use RuntimeException;
 use Tests\TestCase;
 
 class EnrollmentApprovalTransactionTest extends TestCase
@@ -65,10 +67,48 @@ class EnrollmentApprovalTransactionTest extends TestCase
 
         $this->assertSame('pending', $record->refresh()->approval_status);
 
+        $record->update(['approval_status' => 'approved']);
         $migration->up();
         $record->update(['approval_status' => 'rejected']);
 
         $this->assertSame('rejected', $record->refresh()->approval_status);
+    }
+
+    public function test_rejected_status_migration_succeeds_when_no_pending_enrollments_exist(): void
+    {
+        $record = Enrollment::factory()->create(['approval_status' => 'approved']);
+        $migration = require database_path('migrations/2026_09_17_070812_add_rejected_status_to_enrollments_table.php');
+        $migration->down();
+
+        $migration->up();
+
+        $this->assertTrue(Schema::hasColumn('enrollments', 'decision_token_hash'));
+        $this->assertSame('approved', $record->refresh()->approval_status);
+        $record->update(['approval_status' => 'rejected']);
+        $this->assertSame('rejected', $record->refresh()->approval_status);
+    }
+
+    public function test_rejected_status_migration_fails_before_any_mutation_when_pending_enrollments_exist(): void
+    {
+        $migration = require database_path('migrations/2026_09_17_070812_add_rejected_status_to_enrollments_table.php');
+        $migration->down();
+        $pending = Enrollment::factory()->create(['approval_status' => 'pending']);
+        $failure = null;
+
+        try {
+            $migration->up();
+        } catch (RuntimeException $exception) {
+            $failure = $exception;
+        }
+
+        $this->assertInstanceOf(RuntimeException::class, $failure);
+        $this->assertStringContainsString('1 pending enrollment', $failure->getMessage());
+        $this->assertStringContainsString('resolve every pending enrollment', $failure->getMessage());
+        $this->assertFalse(Schema::hasColumn('enrollments', 'decision_token_hash'));
+        $this->assertSame('pending', $pending->refresh()->approval_status);
+
+        $this->expectException(QueryException::class);
+        $pending->update(['approval_status' => 'rejected']);
     }
 
     public function test_combined_release_migrations_roll_back_and_reapply_in_dependency_order(): void

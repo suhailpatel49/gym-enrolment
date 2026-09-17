@@ -43,7 +43,7 @@ class TabletAccessController extends Controller
             return back()->withErrors(['pin' => 'The PIN is not correct.'], 'logout');
         }
 
-        $request->session()->forget('tablet_authenticated');
+        $request->session()->forget(['tablet_authenticated', 'enrollment_reviews']);
         $request->session()->regenerateToken();
 
         return redirect()->route('tablet.login');

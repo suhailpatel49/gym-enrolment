@@ -1,11 +1,11 @@
 <?php
 
-use App\Mail\EnrollmentConfirmation;
+use App\EnrollmentDecisionRecorder;
 use App\Models\Enrollment;
 use Illuminate\Support\Facades\Date;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 
 new class extends Component
@@ -48,12 +48,19 @@ new class extends Component
 
     public bool $termsAccepted = false;
 
+    #[Locked]
     public bool $reviewing = false;
 
+    #[Locked]
     public ?string $reviewReference = null;
 
+    #[Locked]
+    public ?string $decisionToken = null;
+
+    #[Locked]
     public ?string $submittedReference = null;
 
+    #[Locked]
     public ?string $submittedDecision = null;
 
     public function mount(): void
@@ -107,49 +114,82 @@ new class extends Component
 
     public function review(): void
     {
-        $this->validatedEnrollmentData();
-        $this->reviewReference ??= 'IF-'.now()->format('Ymd').'-'.Str::upper(Str::random(6));
+        $attributes = $this->validatedEnrollmentData();
+        $this->reviewReference = 'IF-'.now()->format('Ymd').'-'.Str::upper(Str::random(6));
+        $this->decisionToken = Str::random(64);
+        session()->put($this->reviewSessionKey(), [
+            'reference' => $this->reviewReference,
+            'attributes' => $attributes,
+        ]);
         $this->reviewing = true;
     }
 
     public function goBack(): void
     {
-        $this->reviewing = false;
+        $this->invalidateReview();
     }
 
-    public function approve(): void
+    public function approve(EnrollmentDecisionRecorder $recorder): void
     {
-        $this->finalize('approved');
+        $this->finalize('approved', $recorder);
     }
 
-    public function reject(): void
+    public function reject(EnrollmentDecisionRecorder $recorder): void
     {
-        $this->finalize('rejected');
+        $this->finalize('rejected', $recorder);
     }
 
-    private function finalize(string $decision): void
+    private function finalize(string $decision, EnrollmentDecisionRecorder $recorder): void
     {
-        if ($this->submittedReference !== null || $this->reviewReference === null) {
+        if ($this->submittedReference !== null) {
             return;
         }
 
-        $attributes = $this->validatedEnrollmentData();
-        $enrollment = Enrollment::query()->firstOrCreate(
-            ['reference_code' => $this->reviewReference],
-            [
-                ...$attributes,
-                'approval_status' => $decision,
-                'approved_at' => $decision === 'approved' ? now() : null,
-            ],
-        );
+        $decisionTokenHash = $this->decisionToken === null ? null : hash('sha256', $this->decisionToken);
+        $existingEnrollment = $decisionTokenHash === null
+            ? null
+            : Enrollment::query()->where('decision_token_hash', $decisionTokenHash)->first();
 
-        if ($enrollment->wasRecentlyCreated && $decision === 'approved') {
-            Mail::to($enrollment->email)->queue(new EnrollmentConfirmation($enrollment));
+        if ($existingEnrollment !== null) {
+            $this->completeDecision($existingEnrollment);
+
+            return;
         }
 
-        $this->submittedReference = $enrollment->reference_code;
-        $this->submittedDecision = $enrollment->approval_status;
-        $this->reviewing = false;
+        if (! $this->reviewing || $this->reviewReference === null || $this->decisionToken === null) {
+            $this->addError('review', 'Review the enrollment before recording a decision.');
+
+            return;
+        }
+
+        $review = session()->get($this->reviewSessionKey());
+
+        if (! is_array($review)
+            || ($review['reference'] ?? null) !== $this->reviewReference
+            || ($review['attributes'] ?? null) !== $this->validatedEnrollmentData()) {
+            $this->invalidateReview();
+            $this->addError('review', 'The enrollment changed or the review expired. Review it again before recording a decision.');
+
+            return;
+        }
+
+        $attributes = $review['attributes'];
+
+        try {
+            $enrollment = $recorder->record(
+                $decisionTokenHash,
+                $this->reviewReference,
+                $attributes,
+                $decision,
+            );
+        } catch (Throwable $exception) {
+            report($exception);
+            $this->addError('review', 'We could not record your enrollment. Please try again.');
+
+            return;
+        }
+
+        $this->completeDecision($enrollment);
     }
 
     /**
@@ -216,6 +256,29 @@ new class extends Component
         $this->resetValidation();
     }
 
+    private function invalidateReview(): void
+    {
+        if ($this->decisionToken !== null) {
+            session()->forget($this->reviewSessionKey());
+        }
+
+        $this->reviewing = false;
+        $this->reviewReference = null;
+        $this->decisionToken = null;
+    }
+
+    private function completeDecision(Enrollment $enrollment): void
+    {
+        $this->submittedReference = $enrollment->reference_code;
+        $this->submittedDecision = $enrollment->approval_status;
+        $this->invalidateReview();
+    }
+
+    private function reviewSessionKey(): string
+    {
+        return 'enrollment_reviews.'.$this->decisionToken;
+    }
+
     private function calculateMembershipEndDate(): void
     {
         $months = $this->packageMonths === 'other'
@@ -247,6 +310,10 @@ new class extends Component
 ?>
 
 <div>
+    @error('review')
+        <p role="alert" class="mb-4 rounded-sm border-l-4 border-primary bg-canvas px-4 py-3 text-sm font-semibold text-tertiary">{{ $message }}</p>
+    @enderror
+
     @if ($submittedReference)
         <section data-state="success" role="status" aria-live="polite" class="incline-card overflow-hidden text-center shadow-incline">
             <div class="h-2 bg-primary" aria-hidden="true"></div>

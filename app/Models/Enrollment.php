@@ -15,6 +15,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'freezing_days', 'payment_mode', 'amount_paid', 'membership_start_date',
     'membership_end_date', 'has_balance', 'remaining_balance',
     'balance_due_date', 'terms_accepted', 'approval_status', 'approved_at',
+    'decision_token_hash',
 ])]
 class Enrollment extends Model
 {

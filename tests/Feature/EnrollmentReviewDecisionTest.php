@@ -6,8 +6,10 @@ use App\Mail\EnrollmentConfirmation;
 use App\Models\Enrollment;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 use Illuminate\Support\Facades\Mail;
+use Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException;
 use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 class EnrollmentReviewDecisionTest extends TestCase
@@ -57,14 +59,62 @@ class EnrollmentReviewDecisionTest extends TestCase
         Mail::assertNothingQueued();
     }
 
+    #[DataProvider('serverControlledPropertyProvider')]
+    public function test_server_controlled_review_state_cannot_be_tampered_with(string $property, mixed $value): void
+    {
+        $component = $this->completedForm()->call('review');
+
+        $this->expectException(CannotUpdateLockedPropertyException::class);
+
+        $component->set($property, $value);
+    }
+
+    /**
+     * @return array<string, array{string, mixed}>
+     */
+    public static function serverControlledPropertyProvider(): array
+    {
+        return [
+            'reviewing' => ['reviewing', false],
+            'review reference' => ['reviewReference', 'IF-TAMPERED'],
+            'decision token' => ['decisionToken', str_repeat('a', 64)],
+            'submitted reference' => ['submittedReference', 'IF-TAMPERED'],
+            'submitted decision' => ['submittedDecision', 'approved'],
+        ];
+    }
+
+    public function test_finalize_after_going_back_does_not_persist_a_decision(): void
+    {
+        Mail::fake();
+
+        $this->completedForm()
+            ->call('review')
+            ->call('goBack')
+            ->call('approve');
+
+        $this->assertDatabaseCount('enrollments', 0);
+        Mail::assertNothingQueued();
+    }
+
+    public function test_finalize_rejects_fields_changed_after_review(): void
+    {
+        Mail::fake();
+
+        $this->completedForm()
+            ->call('review')
+            ->set('fullName', 'Changed after review')
+            ->call('approve')
+            ->assertHasErrors('review');
+
+        $this->assertDatabaseCount('enrollments', 0);
+        Mail::assertNothingQueued();
+    }
+
     public function test_approve_persists_an_approved_enrollment_and_queues_one_member_confirmation(): void
     {
         Mail::fake();
 
         $component = $this->completedForm()->call('review');
-        $repeatedRequest = $this->completedForm()
-            ->call('review')
-            ->set('reviewReference', $component->get('reviewReference'));
 
         Mail::assertNothingQueued();
 
@@ -86,9 +136,6 @@ class EnrollmentReviewDecisionTest extends TestCase
         Mail::assertQueuedCount(1);
 
         $component->call('approve');
-        $repeatedRequest
-            ->call('approve')
-            ->assertSet('submittedDecision', 'approved');
 
         $this->assertDatabaseCount('enrollments', 1);
         Mail::assertQueuedCount(1);
