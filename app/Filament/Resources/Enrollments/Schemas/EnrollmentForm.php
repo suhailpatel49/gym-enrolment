@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Enrollments\Schemas;
 
+use App\Models\Enrollment;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -35,6 +36,7 @@ class EnrollmentForm
                 TextInput::make('membership_package')
                     ->required(),
                 Toggle::make('freezing_enabled')
+                    ->helperText(Enrollment::MEMBERSHIP_FREEZING_CHARGE_DISCLOSURE)
                     ->required(),
                 TextInput::make('freezing_days')
                     ->numeric(),

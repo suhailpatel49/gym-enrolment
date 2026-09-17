@@ -2,16 +2,57 @@
 
 namespace Tests\Feature;
 
+use App\Filament\Resources\Enrollments\Schemas\EnrollmentForm;
 use App\Models\Enrollment;
+use Filament\Forms\Components\Toggle;
+use Filament\Schemas\Components\Text;
+use Filament\Schemas\Concerns\InteractsWithSchemas;
+use Filament\Schemas\Contracts\HasSchemas;
+use Filament\Schemas\Schema;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Mail;
+use Livewire\Component;
 use Livewire\Livewire;
 use Tests\TestCase;
 
 class EnrollmentFormTest extends TestCase
 {
     use LazilyRefreshDatabase;
+
+    public function test_the_freezing_charge_disclosure_is_always_visible_next_to_the_public_control(): void
+    {
+        $form = Livewire::test('enrollment-form')
+            ->assertSeeInOrder([
+                'Add membership freezing?',
+                'Membership freezing is charged separately.',
+                'Yes',
+                'No',
+            ]);
+
+        $form->set('freezingEnabled', true)
+            ->assertSee('Membership freezing is charged separately.');
+    }
+
+    public function test_the_filament_freezing_toggle_has_the_charge_disclosure_as_helper_text(): void
+    {
+        $livewire = new class extends Component implements HasSchemas
+        {
+            use InteractsWithSchemas;
+        };
+
+        $freezingToggle = EnrollmentForm::configure(Schema::make($livewire))
+            ->getComponent('freezing_enabled');
+
+        $this->assertInstanceOf(Toggle::class, $freezingToggle);
+
+        $helperText = $freezingToggle
+            ->getChildSchema(Toggle::BELOW_CONTENT_SCHEMA_KEY)
+            ?->getComponents()[0] ?? null;
+
+        $this->assertInstanceOf(Text::class, $helperText);
+        $this->assertSame('Membership freezing is charged separately.', $helperText->getContent());
+    }
 
     public function test_the_form_lists_all_membership_terms_in_order_and_keeps_the_acceptance_sentence(): void
     {

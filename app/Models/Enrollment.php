@@ -22,6 +22,8 @@ class Enrollment extends Model
     /** @use HasFactory<EnrollmentFactory> */
     use HasFactory;
 
+    public const MEMBERSHIP_FREEZING_CHARGE_DISCLOSURE = 'Membership freezing is charged separately.';
+
     public const TERMS_ACCEPTANCE_TEXT = 'I accept the gym rules, membership terms, freezing policy, and billing policy.';
 
     public const MEMBERSHIP_TERMS = [

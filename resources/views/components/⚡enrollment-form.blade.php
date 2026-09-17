@@ -454,6 +454,7 @@ new class extends Component
 
                 <fieldset class="mt-6 grid gap-3" @error('freezingEnabled') aria-invalid="true" aria-describedby="freezingEnabled-error" @enderror>
                     <legend class="text-sm font-bold">Add membership freezing?</legend>
+                    <p class="text-sm leading-relaxed text-muted">{{ Enrollment::MEMBERSHIP_FREEZING_CHARGE_DISCLOSURE }}</p>
                     <div class="flex flex-wrap gap-3">
                         <label class="incline-choice"><input wire:model.live="freezingEnabled" type="radio" value="1" class="accent-primary"> Yes</label>
                         <label class="incline-choice"><input wire:model.live="freezingEnabled" type="radio" value="0" class="accent-primary"> No</label>
