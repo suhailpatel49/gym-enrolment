@@ -6,6 +6,8 @@ use App\Mail\EnrollmentConfirmation;
 use App\Mail\NewEnrollmentNotification;
 use App\Models\Enrollment;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
+use Symfony\Component\Mime\Email;
+use Symfony\Component\Mime\Part\DataPart;
 use Tests\TestCase;
 
 class EnrollmentMailContentTest extends TestCase
@@ -91,6 +93,55 @@ class EnrollmentMailContentTest extends TestCase
             $this->assertStringNotContainsString($term, $unacceptedHtml);
             $this->assertStringNotContainsString($term, $unacceptedText);
         }
+    }
+
+    public function test_member_email_embeds_the_tracked_logo_inline(): void
+    {
+        $enrollment = Enrollment::factory()->create([
+            'reference_code' => 'IF-LOGO-TEST',
+            'full_name' => 'Logo Test Member',
+            'terms_accepted' => true,
+        ]);
+        $symfonyMessage = null;
+        $mailable = (new EnrollmentConfirmation($enrollment))
+            ->to('member@example.test')
+            ->withSymfonyMessage(function (Email $message) use (&$symfonyMessage): void {
+                $symfonyMessage = $message;
+            });
+
+        app('mailer')->sendNow($mailable);
+
+        $this->assertInstanceOf(Email::class, $symfonyMessage);
+
+        $document = new \DOMDocument;
+        @$document->loadHTML($symfonyMessage->getHtmlBody());
+        $logo = (new \DOMXPath($document))->query('//img[@alt="Incline Fitness"]')->item(0);
+
+        $this->assertInstanceOf(\DOMElement::class, $logo);
+        $this->assertStringStartsWith('cid:', $logo->getAttribute('src'));
+        $this->assertSame('240', $logo->getAttribute('width'));
+        $this->assertSame('60', $logo->getAttribute('height'));
+        $this->assertStringContainsString('max-width:100%', $logo->getAttribute('style'));
+
+        $inlineLogos = array_values(array_filter(
+            $symfonyMessage->getAttachments(),
+            fn (DataPart $part): bool => $part->getDisposition() === 'inline'
+                && $part->getFilename() === 'incline-fitness-logo.png',
+        ));
+
+        $this->assertCount(1, $inlineLogos);
+        $this->assertSame(
+            '7c01ad394253b9b68672ab29a3311b7e070efc37f25d3233700c7b232b2a6720',
+            hash('sha256', $inlineLogos[0]->getBody()),
+        );
+
+        foreach (self::MEMBERSHIP_TERMS as $term) {
+            $this->assertStringContainsString($term, $symfonyMessage->getHtmlBody());
+        }
+
+        $adminHtml = (new NewEnrollmentNotification($enrollment))->render();
+
+        $this->assertStringNotContainsString('alt="Incline Fitness"', $adminHtml);
     }
 
     private function assertTermsAppearInOrder(string $content): void

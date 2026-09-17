@@ -1,7 +1,9 @@
 <x-layouts.public title="Member enrollment · Incline Fitness">
     <main id="main-content" data-surface="enrollment" class="mx-auto w-[min(1040px,calc(100%-24px))] py-4 sm:w-[min(1040px,calc(100%-40px))] sm:py-7">
         <header class="mb-5 flex items-center justify-between gap-4 border-b border-border pb-4 sm:mb-7 sm:pb-5">
-            <x-brand />
+            <div class="min-w-0 max-w-[min(60vw,18rem)] rounded-sm bg-secondary px-3 py-2">
+                <img src="{{ asset('images/incline-fitness-logo.png') }}" alt="Incline Fitness" width="1194" height="298" class="h-auto w-48 max-w-full">
+            </div>
             <button type="button" data-dialog-open="logout-dialog" class="incline-button-secondary text-sm">Logout</button>
         </header>
 

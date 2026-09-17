@@ -97,6 +97,34 @@ class VisualIdentityTest extends TestCase
             ->assertSee('aria-describedby="logout-pin-error"', false);
     }
 
+    public function test_enrollment_header_uses_the_tracked_responsive_logo(): void
+    {
+        $this->withoutVite();
+
+        $logoPath = public_path('images/incline-fitness-logo.png');
+
+        $this->assertFileExists($logoPath);
+        $this->assertSame(
+            '7c01ad394253b9b68672ab29a3311b7e070efc37f25d3233700c7b232b2a6720',
+            hash_file('sha256', $logoPath),
+        );
+
+        $html = $this->withSession(['tablet_authenticated' => true])
+            ->get(route('enrollment.create'))
+            ->assertOk()
+            ->getContent();
+
+        $document = new \DOMDocument;
+        @$document->loadHTML($html);
+        $logo = (new \DOMXPath($document))->query('//header//img[@alt="Incline Fitness"]')->item(0);
+
+        $this->assertInstanceOf(\DOMElement::class, $logo);
+        $this->assertSame(asset('images/incline-fitness-logo.png'), $logo->getAttribute('src'));
+        $this->assertSame('1194', $logo->getAttribute('width'));
+        $this->assertSame('298', $logo->getAttribute('height'));
+        $this->assertStringContainsString('max-w-full', $logo->getAttribute('class'));
+    }
+
     public function test_enrollment_validation_and_success_have_accessible_states(): void
     {
         config()->set('queue.default', 'database');

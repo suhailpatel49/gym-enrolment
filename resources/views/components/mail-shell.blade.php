@@ -1,4 +1,4 @@
-@props(['title', 'preheader', 'showFooter' => true])
+@props(['title', 'preheader', 'showFooter' => true, 'logoSrc' => null])
 
 <!DOCTYPE html>
 <html lang="en">
@@ -25,7 +25,11 @@
                             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
                                 <tr>
                                     <td style="padding:27px 30px; background:#1D2229; color:#FFFFFF;">
-                                        <div style="color:#FFFFFF; font-size:12px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase;">Incline Fitness</div>
+                                        @if ($logoSrc)
+                                            <img src="{{ $logoSrc }}" alt="Incline Fitness" width="240" height="60" style="display:block; width:240px; height:auto; max-width:100%; border:0; outline:none; text-decoration:none;">
+                                        @else
+                                            <div style="color:#FFFFFF; font-size:12px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase;">Incline Fitness</div>
+                                        @endif
                                         <h1 style="margin:12px 0 7px; font-size:28px; line-height:1.15; color:#FFFFFF;">{{ $title }}</h1>
                                         <div style="color:#D8DDE1; font-size:15px; line-height:1.5;">{{ $preheader }}</div>
                                     </td>
