@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\PersonalTrainingMembers\Schemas;
 
+use App\Models\PersonalTrainingMember;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Schema;
 
@@ -23,13 +24,12 @@ class PersonalTrainingMemberInfolist
                 ->color(fn (string $state): string => $state === 'Trainer RCVD Full Payment' ? 'info' : 'gray'),
             TextEntry::make('training_status')->label('Training status')->badge()
                 ->formatStateUsing(fn (string $state): string => ucfirst($state))
-                ->color(fn (string $state): string => match ($state) {
-                    'active' => 'success', 'upcoming' => 'info', 'completed' => 'gray', 'cancelled' => 'danger',
-                }),
+                ->color(fn (string $state): string => PersonalTrainingMember::trainingStatusColor($state)),
             TextEntry::make('trainer_settlement_status')->label('Trainer settlement')->badge()
                 ->formatStateUsing(fn (string $state): string => ucfirst($state))
                 ->color(fn (string $state): string => $state === 'paid' ? 'success' : 'danger'),
-            TextEntry::make('remark')->placeholder('—')->columnSpanFull(),
+            TextEntry::make('number_of_sessions')->label('Number of sessions')->placeholder('—'),
+            TextEntry::make('remark')->label('Remarks')->placeholder('—')->columnSpanFull(),
         ]);
     }
 }

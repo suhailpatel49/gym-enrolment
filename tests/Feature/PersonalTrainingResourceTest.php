@@ -6,6 +6,7 @@ use App\Enums\UserRole;
 use App\Filament\Resources\PersonalTrainingMembers\Pages\CreatePersonalTrainingMember;
 use App\Filament\Resources\PersonalTrainingMembers\Pages\EditPersonalTrainingMember;
 use App\Filament\Resources\PersonalTrainingMembers\Pages\ListPersonalTrainingMembers;
+use App\Filament\Resources\PersonalTrainingMembers\Pages\ViewPersonalTrainingMember;
 use App\Filament\Resources\PersonalTrainingMembers\PersonalTrainingMemberResource;
 use App\Filament\Resources\Trainers\Pages\CreateTrainer;
 use App\Filament\Resources\Trainers\Pages\EditTrainer;
@@ -17,6 +18,10 @@ use App\Models\User;
 use Carbon\Carbon;
 use Filament\Actions\Testing\TestAction;
 use Filament\Facades\Filament;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
+use Filament\Infolists\Components\TextEntry;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
@@ -112,6 +117,80 @@ class PersonalTrainingResourceTest extends TestCase
         }
     }
 
+    public function test_manual_status_form_filter_table_and_infolist_use_the_exact_canonical_values(): void
+    {
+        $this->actingAs(User::factory()->staff()->create());
+        $trainer = Trainer::factory()->create();
+        $options = [
+            'pending' => 'Pending',
+            'active' => 'Active',
+            'completed' => 'Completed',
+            'cancelled' => 'Cancelled',
+        ];
+
+        Livewire::test(CreatePersonalTrainingMember::class)
+            ->assertFormFieldExists('training_status', fn (Select $field): bool => $field->getLabel() === 'Training status' && $field->getOptions() === $options)
+            ->fillForm([
+                'client_name' => 'Manual Status Client',
+                'phone' => '987654321',
+                'trainer_id' => $trainer->id,
+                'payment_mode' => 'Cash',
+                'start_date' => '2026-07-01',
+                'end_date' => '2026-07-31',
+                'total_client_amount' => '2500.00',
+                'gym_amount' => '0.00',
+                'training_status' => 'completed',
+            ])
+            ->call('create')
+            ->assertHasNoFormErrors();
+
+        $completed = PersonalTrainingMember::query()->sole();
+        $pending = PersonalTrainingMember::factory()->create(['training_status' => 'pending']);
+        $active = PersonalTrainingMember::factory()->create(['training_status' => 'active']);
+        $cancelled = PersonalTrainingMember::factory()->create(['training_status' => 'cancelled']);
+
+        $this->assertSame('completed', $completed->training_status);
+
+        $list = Livewire::test(ListPersonalTrainingMembers::class)
+            ->assertTableFilterExists('status', fn (SelectFilter $filter): bool => $filter->getOptions() === $options);
+
+        foreach ([$pending, $active, $completed, $cancelled] as $record) {
+            $list->resetTableFilters()
+                ->filterTable('status', $record->training_status)
+                ->assertCanSeeTableRecords([$record])
+                ->assertCanNotSeeTableRecords(array_values(array_filter(
+                    [$pending, $active, $completed, $cancelled],
+                    fn (PersonalTrainingMember $other): bool => ! $other->is($record),
+                )));
+        }
+
+        $list->resetTableFilters();
+
+        foreach ([
+            [$pending, 'warning'],
+            [$active, 'success'],
+            [$completed, 'gray'],
+            [$cancelled, 'danger'],
+        ] as [$record, $color]) {
+            $list->assertTableColumnStateSet('training_status', $record->training_status, $record)
+                ->assertTableColumnExists(
+                    'training_status',
+                    fn (TextColumn $column): bool => $column->isBadge() && $column->getColor($column->getState()) === $color,
+                    $record,
+                );
+        }
+
+        Livewire::test(ViewPersonalTrainingMember::class, ['record' => $completed->id])
+            ->assertSchemaComponentStateSet('training_status', 'completed', 'infolist')
+            ->assertSchemaComponentExists(
+                'training_status',
+                'infolist',
+                fn (TextEntry $entry): bool => $entry->getLabel() === 'Training status'
+                    && $entry->isBadge()
+                    && $entry->getColor($entry->getState()) === 'gray',
+            );
+    }
+
     public function test_required_fields_and_invalid_values_are_rejected_on_create_and_edit(): void
     {
         $this->actingAs(User::factory()->staff()->create());
@@ -137,31 +216,137 @@ class PersonalTrainingResourceTest extends TestCase
         $this->assertSame(1, PersonalTrainingMember::query()->count());
     }
 
+    public function test_number_of_sessions_is_optional_bounded_integer_and_visible_in_list_and_detail(): void
+    {
+        $this->actingAs(User::factory()->staff()->create());
+        $trainer = Trainer::factory()->create();
+        $form = [
+            'client_name' => 'Session Client',
+            'phone' => '987654321',
+            'trainer_id' => $trainer->id,
+            'payment_mode' => 'Cash',
+            'start_date' => '2026-06-01',
+            'end_date' => '2026-06-30',
+            'total_client_amount' => '2500.00',
+            'gym_amount' => '0.00',
+            'training_status' => 'active',
+        ];
+
+        Livewire::test(CreatePersonalTrainingMember::class)
+            ->assertFormFieldExists('number_of_sessions', fn (TextInput $field): bool => $field->getLabel() === 'Number of sessions')
+            ->fillForm([...$form, 'number_of_sessions' => 0])
+            ->call('create')
+            ->assertHasFormErrors(['number_of_sessions']);
+        Livewire::test(CreatePersonalTrainingMember::class)
+            ->fillForm([...$form, 'number_of_sessions' => 1.5])
+            ->call('create')
+            ->assertHasFormErrors(['number_of_sessions']);
+        Livewire::test(CreatePersonalTrainingMember::class)
+            ->fillForm([...$form, 'number_of_sessions' => 10_001])
+            ->call('create')
+            ->assertHasFormErrors(['number_of_sessions']);
+        Livewire::test(CreatePersonalTrainingMember::class)
+            ->fillForm([...$form, 'number_of_sessions' => 37])
+            ->call('create')
+            ->assertHasNoFormErrors();
+
+        $member = PersonalTrainingMember::query()->sole();
+        $this->assertSame(37, $member->number_of_sessions);
+
+        Livewire::test(EditPersonalTrainingMember::class, ['record' => $member->id])
+            ->fillForm(['number_of_sessions' => null, 'trainer_payment_paid' => true])
+            ->call('save')
+            ->assertHasNoFormErrors();
+        $this->assertNull($member->fresh()->number_of_sessions);
+
+        Livewire::test(ListPersonalTrainingMembers::class)
+            ->assertTableColumnStateSet('number_of_sessions', null, $member)
+            ->assertTableColumnExists(
+                'number_of_sessions',
+                fn (TextColumn $column): bool => $column->getLabel() === 'Number of sessions' && $column->getPlaceholder() === '—',
+                $member,
+            );
+        Livewire::test(ViewPersonalTrainingMember::class, ['record' => $member->id])
+            ->assertSchemaComponentStateSet('number_of_sessions', null, 'infolist')
+            ->assertSchemaComponentExists(
+                'number_of_sessions',
+                'infolist',
+                fn (TextEntry $entry): bool => $entry->getLabel() === 'Number of sessions' && $entry->getPlaceholder() === '—',
+            );
+    }
+
+    public function test_remarks_is_optional_limited_persisted_and_visible_in_details(): void
+    {
+        $this->actingAs(User::factory()->staff()->create());
+        $trainer = Trainer::factory()->create();
+        $member = PersonalTrainingMember::factory()->for($trainer)->create([
+            'start_date' => '2026-06-01',
+            'end_date' => '2026-06-30',
+            'number_of_sessions' => 12,
+            'remark' => null,
+        ]);
+
+        Livewire::test(EditPersonalTrainingMember::class, ['record' => $member->id])
+            ->assertFormFieldExists('remark', fn (Textarea $field): bool => $field->getLabel() === 'Remarks'
+                && ! $field->isRequired()
+                && $field->getMaxLength() === 2000)
+            ->fillForm(['remark' => str_repeat('x', 2001), 'trainer_payment_paid' => true])
+            ->call('save')
+            ->assertHasFormErrors(['remark' => 'max']);
+
+        Livewire::test(EditPersonalTrainingMember::class, ['record' => $member->id])
+            ->fillForm(['remark' => 'Focus on mobility', 'trainer_payment_paid' => true])
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $this->assertSame('Focus on mobility', $member->fresh()->remark);
+
+        Livewire::test(ViewPersonalTrainingMember::class, ['record' => $member->id])
+            ->assertSchemaComponentStateSet('remark', 'Focus on mobility', 'infolist')
+            ->assertSchemaComponentExists(
+                'remark',
+                'infolist',
+                fn (TextEntry $entry): bool => $entry->getLabel() === 'Remarks' && $entry->getPlaceholder() === '—',
+            );
+
+        $this->get(TrainerResource::getUrl('month', ['record' => $trainer, 'month' => '2026-06']))
+            ->assertOk()
+            ->assertSee('Number of sessions')
+            ->assertSee('12')
+            ->assertSee('Remarks')
+            ->assertSee('Focus on mobility');
+    }
+
     #[DataProvider('roles')]
-    public function test_row_actions_confirm_renew_and_deactivate_without_delete(UserRole $role): void
+    public function test_row_actions_renew_and_cancel_manual_status_without_changing_preserved_data(UserRole $role): void
     {
         $this->actingAs(User::factory()->create(['role' => $role]));
         $member = PersonalTrainingMember::factory()->create([
             'start_date' => '2026-06-01', 'end_date' => '2026-06-30',
+            'training_status' => 'completed',
+            'number_of_sessions' => 12,
             'member_payment_paid' => true, 'trainer_payment_paid' => true,
+            'remark' => 'Keep this arrangement',
         ]);
         $renew = TestAction::make('renewOneMonth')->table($member);
         $page = Livewire::test(ListPersonalTrainingMembers::class)->mountAction($renew);
+        $page->assertMountedActionModalDontSee('completed');
         $this->assertSame('2026-06-30', $member->fresh()->end_date->toDateString());
         $page->callMountedAction();
         $this->assertSame('2026-07-30', $member->fresh()->end_date->toDateString());
+        $this->assertSame('active', $member->fresh()->training_status);
         $this->assertFalse($member->fresh()->member_payment_paid);
         $this->assertFalse($member->fresh()->trainer_payment_paid);
-        $beforeDeactivation = $member->fresh()->only(['start_date', 'end_date', 'total_client_amount', 'gym_amount', 'trainer_amount', 'trainer_payment_paid']);
+        $beforeCancellation = $member->fresh()->only(['start_date', 'end_date', 'number_of_sessions', 'total_client_amount', 'gym_amount', 'trainer_amount', 'trainer_payment_paid', 'remark']);
         $deactivate = TestAction::make('deactivate')->table($member);
         $duplicateDeactivation = Livewire::test(ListPersonalTrainingMembers::class)->mountAction($deactivate);
         $page->mountAction($deactivate);
-        $this->assertTrue($member->fresh()->active);
+        $this->assertSame('active', $member->fresh()->training_status);
         $page->callMountedAction();
-        $this->assertFalse($member->fresh()->active);
+        $this->assertSame('cancelled', $member->fresh()->training_status);
         $duplicateDeactivation->callMountedAction();
-        $this->assertFalse($member->fresh()->active);
-        $this->assertEquals($beforeDeactivation, $member->fresh()->only(array_keys($beforeDeactivation)));
+        $this->assertSame('cancelled', $member->fresh()->training_status);
+        $this->assertEquals($beforeCancellation, $member->fresh()->only(array_keys($beforeCancellation)));
         $page->assertActionHidden($deactivate)->assertActionDoesNotExist(TestAction::make('delete')->table($member));
         Livewire::test(ListTrainers::class)->assertActionDoesNotExist(TestAction::make('delete')->table($member->trainer));
     }
@@ -178,25 +363,23 @@ class PersonalTrainingResourceTest extends TestCase
         $this->assertSame('2026-07-30', $member->fresh()->end_date->toDateString());
     }
 
-    public function test_list_filters_and_trainer_active_member_count(): void
+    public function test_trainer_filter_and_active_member_count_use_manual_status(): void
     {
         $this->actingAs(User::factory()->staff()->create());
-        $active = PersonalTrainingMember::factory()->create(['end_date' => '2026-06-10']);
-        $expired = PersonalTrainingMember::factory()->for($active->trainer)->create(['end_date' => '2026-06-09']);
-        $inactive = PersonalTrainingMember::factory()->create(['active' => false]);
-        $upcoming = PersonalTrainingMember::factory()->for($active->trainer)->create(['start_date' => '2026-06-11', 'end_date' => '2026-06-17']);
+        $active = PersonalTrainingMember::factory()->create([
+            'training_status' => 'active',
+            'start_date' => '2026-05-01',
+            'end_date' => '2026-05-31',
+        ]);
+        $completed = PersonalTrainingMember::factory()->for($active->trainer)->create(['training_status' => 'completed']);
+        $pending = PersonalTrainingMember::factory()->for($active->trainer)->create(['training_status' => 'pending']);
+        $cancelled = PersonalTrainingMember::factory()->create(['training_status' => 'cancelled']);
         $paid = PersonalTrainingMember::factory()->create(['member_payment_paid' => true, 'trainer_payment_paid' => true]);
         Livewire::test(ListPersonalTrainingMembers::class)
-            ->assertTableFilterExists('status', fn (SelectFilter $filter): bool => ($filter->getOptions()['upcoming'] ?? null) === 'Upcoming')
-            ->assertCanSeeTableRecords([$active, $expired, $inactive, $paid, $upcoming])
-            ->filterTable('trainer', $active->trainer_id)->assertCanSeeTableRecords([$active, $expired, $upcoming])->assertCanNotSeeTableRecords([$inactive, $paid])
-            ->resetTableFilters()->filterTable('status', 'active')->assertCanSeeTableRecords([$active, $paid])->assertCanNotSeeTableRecords([$expired, $inactive, $upcoming])
-            ->resetTableFilters()->filterTable('status', 'completed')->assertCanSeeTableRecords([$expired])->assertCanNotSeeTableRecords([$active, $inactive, $paid, $upcoming])
-            ->resetTableFilters()->filterTable('status', 'cancelled')->assertCanSeeTableRecords([$inactive])->assertCanNotSeeTableRecords([$active, $expired, $paid, $upcoming])
-            ->resetTableFilters()->filterTable('status', 'upcoming')->assertCanSeeTableRecords([$upcoming])->assertCanNotSeeTableRecords([$active, $expired, $inactive, $paid])
-            ->assertTableColumnStateSet('training_status', 'upcoming', $upcoming)
-            ->assertTableColumnExists('training_status', fn (TextColumn $column): bool => $column->isBadge() && $column->getColor($column->getState()) === 'info', $upcoming)
-            ->resetTableFilters()->filterTable('trainer_payment_paid', false)->assertCanSeeTableRecords([$active])->assertCanNotSeeTableRecords([$paid]);
+            ->assertCanSeeTableRecords([$active, $completed, $pending, $cancelled, $paid])
+            ->filterTable('trainer', $active->trainer_id)
+            ->assertCanSeeTableRecords([$active, $completed, $pending])
+            ->assertCanNotSeeTableRecords([$cancelled, $paid]);
         Livewire::test(ListTrainers::class)->assertTableColumnStateSet('personal_training_members_count', 1, $active->trainer);
     }
 }

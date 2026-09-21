@@ -20,6 +20,8 @@ class PersonalTrainingMemberFactory extends Factory
             'payment_mode' => fake()->randomElement(['gpay', 'card', 'cash']),
             'total_client_amount' => '2500.00',
             'gym_amount' => '0.00',
+            'training_status' => 'active',
+            'number_of_sessions' => null,
             'remark' => null,
         ];
     }

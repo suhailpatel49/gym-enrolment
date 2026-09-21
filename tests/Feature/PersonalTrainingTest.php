@@ -24,7 +24,7 @@ class PersonalTrainingTest extends TestCase
         $member = PersonalTrainingMember::factory()->for($trainer)->create();
 
         $this->assertTrue($trainer->active);
-        $this->assertTrue($member->active);
+        $this->assertSame('active', $member->training_status);
         $this->assertFalse($member->member_payment_paid);
         $this->assertFalse($member->trainer_payment_paid);
         $this->assertTrue($member->trainer->is($trainer));
@@ -40,7 +40,7 @@ class PersonalTrainingTest extends TestCase
     {
         $this->travelTo(Carbon::parse($today));
         $member = PersonalTrainingMember::factory()->create([
-            'start_date' => $start, 'end_date' => $end, 'active' => false,
+            'start_date' => $start, 'end_date' => $end, 'training_status' => 'cancelled',
             'member_payment_paid' => true, 'trainer_payment_paid' => true,
         ]);
 
@@ -48,7 +48,7 @@ class PersonalTrainingTest extends TestCase
         $member->refresh();
         $this->assertSame($expectedStart, $member->start_date->toDateString());
         $this->assertSame($expectedEnd, $member->end_date->toDateString());
-        $this->assertTrue($member->active);
+        $this->assertSame('active', $member->training_status);
         $this->assertFalse($member->member_payment_paid);
         $this->assertFalse($member->trainer_payment_paid);
         $this->assertFalse($member->renewOneMonth($end));
@@ -80,27 +80,68 @@ class PersonalTrainingTest extends TestCase
     }
 
     #[DataProvider('statuses')]
-    public function test_status_and_current_scope_agree(bool $active, string $start, string $end, string $status): void
+    public function test_status_label_and_current_scope_use_manual_status(string $trainingStatus, string $start, string $end): void
     {
         $this->travelTo(Carbon::parse('2026-06-10 23:59:59'));
-        $member = PersonalTrainingMember::factory()->create(['active' => $active, 'start_date' => $start, 'end_date' => $end]);
+        $member = PersonalTrainingMember::factory()->create([
+            'training_status' => $trainingStatus,
+            'start_date' => $start,
+            'end_date' => $end,
+        ]);
 
-        $this->assertSame($status, $member->status);
-        $this->assertSame($status === 'Active', PersonalTrainingMember::query()->current()->whereKey($member)->exists());
+        $this->assertSame(ucfirst($trainingStatus), $member->status);
+        $this->assertSame($trainingStatus === 'active', PersonalTrainingMember::query()->current()->whereKey($member)->exists());
     }
 
     public static function statuses(): array
     {
         return [
-            [true, '2026-06-01', '2026-06-09', 'Completed'],
-            [true, '2026-06-01', '2026-06-10', 'Active'],
-            [true, '2026-06-01', '2026-06-11', 'Active'],
-            [true, '2026-06-10', '2026-06-10', 'Active'],
-            [true, '2026-06-11', '2026-06-17', 'Upcoming'],
-            [false, '2026-06-11', '2026-06-17', 'Cancelled'],
-            [false, '2026-06-01', '2026-06-09', 'Cancelled'],
-            [false, '2026-06-01', '2026-06-11', 'Cancelled'],
+            ['pending', '2026-06-01', '2026-06-09'],
+            ['active', '2026-06-01', '2026-06-09'],
+            ['active', '2026-06-11', '2026-06-17'],
+            ['completed', '2026-06-11', '2026-06-17'],
+            ['cancelled', '2026-06-01', '2026-06-11'],
         ];
+    }
+
+    #[DataProvider('manualStatusesWithContradictoryDates')]
+    public function test_training_status_remains_manual_despite_dates(string $trainingStatus, string $startDate, string $endDate): void
+    {
+        $this->travelTo(Carbon::parse('2026-06-10'));
+        $member = PersonalTrainingMember::factory()->create([
+            'training_status' => $trainingStatus,
+            'start_date' => $startDate,
+            'end_date' => $endDate,
+        ]);
+
+        $this->assertSame($trainingStatus, $member->training_status);
+    }
+
+    public static function manualStatusesWithContradictoryDates(): array
+    {
+        return [
+            'active with past dates' => ['active', '2026-05-01', '2026-05-31'],
+            'completed with future dates' => ['completed', '2026-06-11', '2026-07-10'],
+        ];
+    }
+
+    public function test_current_scope_uses_only_persisted_active_status(): void
+    {
+        $activeWithPastDates = PersonalTrainingMember::factory()->create([
+            'training_status' => 'active',
+            'start_date' => '2026-05-01',
+            'end_date' => '2026-05-31',
+        ]);
+        $pendingWithCurrentDates = PersonalTrainingMember::factory()->create(['training_status' => 'pending']);
+        $completedWithCurrentDates = PersonalTrainingMember::factory()->create(['training_status' => 'completed']);
+        $cancelledWithCurrentDates = PersonalTrainingMember::factory()->create(['training_status' => 'cancelled']);
+
+        $currentMembers = PersonalTrainingMember::query()->current()->get();
+
+        $this->assertTrue($currentMembers->contains($activeWithPastDates));
+        $this->assertFalse($currentMembers->contains($pendingWithCurrentDates));
+        $this->assertFalse($currentMembers->contains($completedWithCurrentDates));
+        $this->assertFalse($currentMembers->contains($cancelledWithCurrentDates));
     }
 
     public function test_a_trainer_with_members_cannot_be_deleted_from_the_database(): void
@@ -114,10 +155,14 @@ class PersonalTrainingTest extends TestCase
     public function test_migrations_roll_back_and_reapply_cleanly(): void
     {
         $this->assertTrue(Schema::hasTable('personal_training_members'));
+        $sessionsMigration = require database_path('migrations/2026_09_21_101122_add_number_of_sessions_to_personal_training_members_table.php');
+        $statusMigration = require database_path('migrations/2026_09_21_100139_add_training_status_to_personal_training_members_table.php');
         $moneyInvariantMigration = require database_path('migrations/2026_09_09_011948_enforce_personal_training_member_money_invariants.php');
         $ledgerMigration = require database_path('migrations/2026_09_09_002809_expand_personal_training_members_for_trainer_ledger.php');
         $membersMigration = require database_path('migrations/2026_09_06_000002_create_personal_training_members_table.php');
         $trainersMigration = require database_path('migrations/2026_09_06_000001_create_trainers_table.php');
+        $sessionsMigration->down();
+        $statusMigration->down();
         $moneyInvariantMigration->down();
         $ledgerMigration->down();
         $membersMigration->down();
@@ -128,6 +173,8 @@ class PersonalTrainingTest extends TestCase
         $membersMigration->up();
         $ledgerMigration->up();
         $moneyInvariantMigration->up();
+        $statusMigration->up();
+        $sessionsMigration->up();
         $this->assertModelExists(PersonalTrainingMember::factory()->create());
     }
 
@@ -180,8 +227,12 @@ class PersonalTrainingTest extends TestCase
 
     public function test_ledger_migration_preserves_existing_personal_training_amounts(): void
     {
+        $sessionsMigration = require database_path('migrations/2026_09_21_101122_add_number_of_sessions_to_personal_training_members_table.php');
+        $statusMigration = require database_path('migrations/2026_09_21_100139_add_training_status_to_personal_training_members_table.php');
         $moneyInvariantMigration = require database_path('migrations/2026_09_09_011948_enforce_personal_training_member_money_invariants.php');
         $ledgerMigration = require database_path('migrations/2026_09_09_002809_expand_personal_training_members_for_trainer_ledger.php');
+        $sessionsMigration->down();
+        $statusMigration->down();
         $moneyInvariantMigration->down();
         $ledgerMigration->down();
         $trainer = Trainer::factory()->create();
@@ -197,6 +248,8 @@ class PersonalTrainingTest extends TestCase
 
         $ledgerMigration->up();
         $moneyInvariantMigration->up();
+        $statusMigration->up();
+        $sessionsMigration->up();
 
         $entry = PersonalTrainingMember::query()->sole();
         $this->assertSame('Existing Client', $entry->client_name);

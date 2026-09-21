@@ -25,12 +25,13 @@
                     <div><dt class="font-medium text-gray-500 dark:text-gray-400">Start date</dt><dd>{{ $entry->start_date->format('d M Y') }}</dd></div>
                     <div><dt class="font-medium text-gray-500 dark:text-gray-400">End date</dt><dd>{{ $entry->end_date->format('d M Y') }}</dd></div>
                     <div><dt class="font-medium text-gray-500 dark:text-gray-400">Training status</dt><dd>{{ ucfirst($entry->training_status) }}</dd></div>
+                    <div><dt class="font-medium text-gray-500 dark:text-gray-400">Number of sessions</dt><dd>{{ $entry->number_of_sessions ?? '—' }}</dd></div>
                     <div><dt class="font-medium text-gray-500 dark:text-gray-400">Split</dt><dd>{{ $entry->split_classification }}</dd></div>
                     <div><dt class="font-medium text-gray-500 dark:text-gray-400">Total client amount</dt><dd>{{ \Illuminate\Support\Number::currency($entry->total_client_amount, 'INR') }}</dd></div>
                     <div><dt class="font-medium text-gray-500 dark:text-gray-400">Gym amount / commission</dt><dd>{{ \Illuminate\Support\Number::currency($entry->gym_amount, 'INR') }}</dd></div>
                     <div><dt class="font-medium text-gray-500 dark:text-gray-400">Trainer amount</dt><dd class="font-semibold">{{ \Illuminate\Support\Number::currency($entry->trainer_amount, 'INR') }}</dd></div>
                     <div><dt class="font-medium text-gray-500 dark:text-gray-400">Trainer settlement</dt><dd>{{ ucfirst($entry->trainer_settlement_status) }}</dd></div>
-                    <div class="sm:col-span-2"><dt class="font-medium text-gray-500 dark:text-gray-400">Remark</dt><dd class="whitespace-pre-line">{{ $entry->remark ?: '—' }}</dd></div>
+                    <div class="sm:col-span-2"><dt class="font-medium text-gray-500 dark:text-gray-400">Remarks</dt><dd class="whitespace-pre-line">{{ $entry->remark ?: '—' }}</dd></div>
                 </dl>
 
                 <x-slot name="footer">

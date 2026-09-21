@@ -16,15 +16,22 @@ use Illuminate\Validation\ValidationException;
 #[Fillable([
     'client_name', 'phone', 'trainer_id', 'payment_mode', 'start_date', 'end_date',
     'total_client_amount', 'gym_amount', 'trainer_amount', 'member_payment_paid',
-    'trainer_payment_paid', 'active', 'remark',
+    'trainer_payment_paid', 'training_status', 'number_of_sessions', 'remark',
 ])]
 class PersonalTrainingMember extends Model
 {
     /** @use HasFactory<PersonalTrainingMemberFactory> */
     use HasFactory;
 
+    public const TRAINING_STATUSES = [
+        'pending' => 'Pending',
+        'active' => 'Active',
+        'completed' => 'Completed',
+        'cancelled' => 'Cancelled',
+    ];
+
     protected $attributes = [
-        'active' => true,
+        'training_status' => 'pending',
         'member_payment_paid' => false,
         'trainer_payment_paid' => false,
         'payment_mode' => 'Not provided',
@@ -37,12 +44,20 @@ class PersonalTrainingMember extends Model
         return $this->belongsTo(Trainer::class);
     }
 
+    public static function trainingStatusColor(string $trainingStatus): string
+    {
+        return match ($trainingStatus) {
+            'pending' => 'warning',
+            'active' => 'success',
+            'completed' => 'gray',
+            'cancelled' => 'danger',
+        };
+    }
+
     #[Scope]
     protected function current(Builder $query): Builder
     {
-        return $query->where('active', true)
-            ->whereDate('start_date', '<=', today()->toDateString())
-            ->where('end_date', '>=', today()->toDateString());
+        return $query->where('training_status', 'active');
     }
 
     public function renewOneMonth(string $expectedEndDate): bool
@@ -60,7 +75,7 @@ class PersonalTrainingMember extends Model
             ->update([
                 'start_date' => $expired ? today()->toDateString() : $this->start_date->toDateString(),
                 'end_date' => ($expired ? today()->addMonthNoOverflow()->subDay() : $this->end_date->copy()->addMonthNoOverflow())->toDateString(),
-                'active' => true,
+                'training_status' => 'active',
                 'member_payment_paid' => false,
                 'trainer_payment_paid' => false,
             ]);
@@ -69,16 +84,6 @@ class PersonalTrainingMember extends Model
     protected function status(): Attribute
     {
         return Attribute::get(fn (): string => ucfirst($this->training_status));
-    }
-
-    protected function trainingStatus(): Attribute
-    {
-        return Attribute::get(fn (): string => match (true) {
-            ! $this->active => 'cancelled',
-            $this->start_date->gt(today()) => 'upcoming',
-            $this->end_date->lt(today()) => 'completed',
-            default => 'active',
-        });
     }
 
     protected function trainerSettlementStatus(): Attribute
@@ -134,9 +139,9 @@ class PersonalTrainingMember extends Model
             'total_client_amount' => 'decimal:2',
             'gym_amount' => 'decimal:2',
             'trainer_amount' => 'decimal:2',
-            'active' => 'boolean',
             'member_payment_paid' => 'boolean',
             'trainer_payment_paid' => 'boolean',
+            'number_of_sessions' => 'integer',
         ];
     }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\PersonalTrainingMembers\Schemas;
 
+use App\Models\PersonalTrainingMember;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -32,11 +33,11 @@ class PersonalTrainingMemberForm
                 0 => 'Pending',
                 1 => 'Paid',
             ])->default(0)->required(),
-            Select::make('active')->label('Training status')->options([
-                1 => 'Use dates (upcoming / active / completed)',
-                0 => 'Cancelled',
-            ])->default(1)->required(),
-            Textarea::make('remark')->maxLength(2000)->columnSpanFull(),
+            Select::make('training_status')->label('Training status')
+                ->options(PersonalTrainingMember::TRAINING_STATUSES)->default('pending')->required(),
+            TextInput::make('number_of_sessions')->label('Number of sessions')->integer()
+                ->minValue(1)->maxValue(10_000),
+            Textarea::make('remark')->label('Remarks')->maxLength(2000)->columnSpanFull(),
         ]);
     }
 

@@ -129,22 +129,24 @@ class TrainerMonthlyLedgerTest extends TestCase
 
     public function test_training_settlement_and_split_states_are_independent(): void
     {
-        $upcoming = PersonalTrainingMember::factory()->create([
+        $pending = PersonalTrainingMember::factory()->create([
             'start_date' => '2026-06-16',
             'end_date' => '2026-07-15',
+            'training_status' => 'pending',
             'gym_amount' => '0.00',
             'trainer_payment_paid' => true,
         ]);
         $completed = PersonalTrainingMember::factory()->create([
             'start_date' => '2026-05-01',
             'end_date' => '2026-05-31',
+            'training_status' => 'completed',
             'gym_amount' => '500.00',
         ]);
-        $cancelled = PersonalTrainingMember::factory()->create(['active' => false]);
+        $cancelled = PersonalTrainingMember::factory()->create(['training_status' => 'cancelled']);
 
-        $this->assertSame('upcoming', $upcoming->training_status);
-        $this->assertSame('paid', $upcoming->trainer_settlement_status);
-        $this->assertSame('Trainer RCVD Full Payment', $upcoming->split_classification);
+        $this->assertSame('pending', $pending->training_status);
+        $this->assertSame('paid', $pending->trainer_settlement_status);
+        $this->assertSame('Trainer RCVD Full Payment', $pending->split_classification);
         $this->assertSame('completed', $completed->training_status);
         $this->assertSame('pending', $completed->trainer_settlement_status);
         $this->assertSame('Gym Retained Commission', $completed->split_classification);
@@ -163,7 +165,7 @@ class TrainerMonthlyLedgerTest extends TestCase
             'total_client_amount' => '2000.00', 'gym_amount' => '500.00', 'trainer_payment_paid' => false,
         ]);
         $cancelled = PersonalTrainingMember::factory()->for($trainer)->create([
-            'start_date' => '2026-06-05', 'end_date' => '2026-06-30', 'active' => false,
+            'start_date' => '2026-06-05', 'end_date' => '2026-06-30', 'training_status' => 'cancelled',
             'total_client_amount' => '900.00', 'gym_amount' => '100.00',
         ]);
         PersonalTrainingMember::factory()->for($trainer)->create([
@@ -233,7 +235,7 @@ class TrainerMonthlyLedgerTest extends TestCase
             'total_client_amount' => '2500.00',
             'gym_amount' => '500.00',
             'trainer_payment_paid' => false,
-            'active' => true,
+            'training_status' => 'active',
             'remark' => 'Morning sessions',
         ])->call('create')->assertHasNoFormErrors();
 
@@ -246,7 +248,7 @@ class TrainerMonthlyLedgerTest extends TestCase
             'client_name' => 'Cancelled Client',
             'start_date' => '2026-06-10',
             'end_date' => '2026-06-20',
-            'active' => false,
+            'training_status' => 'cancelled',
         ]);
         PersonalTrainingMember::factory()->for($trainer)->create([
             'client_name' => 'July Client',

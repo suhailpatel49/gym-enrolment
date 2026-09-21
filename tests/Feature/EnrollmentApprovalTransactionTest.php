@@ -116,7 +116,7 @@ class EnrollmentApprovalTransactionTest extends TestCase
         PersonalTrainingMember::factory()->create();
         $this->artisan('migrate:rollback', [
             '--database' => 'enrollment_status_test',
-            '--step' => 6,
+            '--step' => 8,
             '--no-interaction' => true,
         ])->assertSuccessful();
 

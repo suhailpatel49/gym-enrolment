@@ -24,7 +24,7 @@ class PersonalTrainingDashboardTest extends TestCase
     }
 
     #[DataProvider('roles')]
-    public function test_three_stats_count_current_members_and_include_seven_day_boundary(UserRole $role): void
+    public function test_three_stats_use_manual_active_status_and_an_inclusive_non_overdue_expiry_window(UserRole $role): void
     {
         Filament::setCurrentPanel(Filament::getPanel('admin'));
         $this->actingAs(User::factory()->create(['role' => $role]));
@@ -33,15 +33,15 @@ class PersonalTrainingDashboardTest extends TestCase
         PersonalTrainingMember::factory()->create(['end_date' => '2026-06-17']);
         PersonalTrainingMember::factory()->create(['end_date' => '2026-06-18', 'trainer_payment_paid' => true]);
         PersonalTrainingMember::factory()->create(['end_date' => '2026-06-09']);
-        PersonalTrainingMember::factory()->create(['end_date' => '2026-06-12', 'active' => false]);
-
-        PersonalTrainingMember::factory()->create(['start_date' => '2026-06-11', 'end_date' => '2026-06-17']);
+        PersonalTrainingMember::factory()->create(['end_date' => '2026-06-12', 'training_status' => 'cancelled']);
+        PersonalTrainingMember::factory()->create(['end_date' => '2026-06-12', 'training_status' => 'pending']);
 
         $widget = Livewire::test(PersonalTrainingStats::class);
         $stats = $widget->instance()->getSchema('content')->getComponents()[0]->getChildSchema()->getComponents();
         $this->assertCount(3, $stats);
-        $this->assertSame([3, 2, 2], array_map(fn ($stat): int => (int) $stat->getValue(), $stats));
+        $this->assertSame([4, 3, 2], array_map(fn ($stat): int => (int) $stat->getValue(), $stats));
         $widget->assertSee('Active PT members')->assertSee('Trainer payments pending')->assertSee('Subscriptions expiring within 7 days');
+        $widget->assertSee('Members manually marked active');
         $this->assertContains(PersonalTrainingStats::class, app(Dashboard::class)->getWidgets());
         $this->get('/admin')->assertOk()->assertSee('Membership overview');
     }
