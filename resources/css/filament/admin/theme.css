@@ -65,6 +65,7 @@
     .fi-sidebar .fi-logo,
     .fi-sidebar .fi-sidebar-group-label,
     .fi-sidebar .fi-sidebar-group-btn > .fi-icon,
+    .fi-sidebar .fi-sidebar-group-collapse-btn > .fi-icon,
     .fi-sidebar .fi-sidebar-group-dropdown-trigger-btn > .fi-icon,
     .fi-sidebar .fi-sidebar-item-label,
     .fi-sidebar .fi-sidebar-item-btn > .fi-icon {
@@ -100,6 +101,7 @@
         @apply border-l-4 border-primary bg-white/10 text-white;
     }
 
+    .fi-sidebar .fi-sidebar-group.fi-active .fi-sidebar-group-collapse-btn > .fi-icon,
     .fi-sidebar .fi-sidebar-group.fi-active .fi-sidebar-group-dropdown-trigger-btn > .fi-icon,
     .fi-sidebar .fi-sidebar-item.fi-active > .fi-sidebar-item-btn > .fi-sidebar-item-label,
     .fi-sidebar .fi-sidebar-item.fi-active > .fi-sidebar-item-btn > .fi-icon {
@@ -107,7 +109,11 @@
     }
 
     .fi-sidebar .fi-sidebar-item.fi-sidebar-item-has-url > .fi-sidebar-item-btn:hover,
-    .fi-sidebar .fi-sidebar-item.fi-sidebar-item-has-url > .fi-sidebar-item-btn:focus-visible {
+    .fi-sidebar .fi-sidebar-item.fi-sidebar-item-has-url > .fi-sidebar-item-btn:focus-visible,
+    .fi-sidebar .fi-sidebar-group-collapse-btn:hover,
+    .fi-sidebar .fi-sidebar-group-collapse-btn:focus-visible,
+    .fi-sidebar .fi-sidebar-group-dropdown-trigger-btn:hover,
+    .fi-sidebar .fi-sidebar-group-dropdown-trigger-btn:focus-visible {
         @apply bg-white/10;
     }
 }

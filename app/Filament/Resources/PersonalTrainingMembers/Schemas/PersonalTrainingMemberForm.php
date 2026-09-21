@@ -36,7 +36,7 @@ class PersonalTrainingMemberForm
             Select::make('training_status')->label('Training status')
                 ->options(PersonalTrainingMember::TRAINING_STATUSES)->default('pending')->required(),
             TextInput::make('number_of_sessions')->label('Number of sessions')->integer()
-                ->minValue(1)->maxValue(10_000),
+                ->minValue(1),
             Textarea::make('remark')->label('Remarks')->maxLength(2000)->columnSpanFull(),
         ]);
     }

@@ -215,7 +215,9 @@ class VisualIdentityTest extends TestCase
             '.fi-sidebar .fi-logo',
             '.fi-sidebar .fi-sidebar-group-label',
             '.fi-sidebar .fi-sidebar-group-btn > .fi-icon',
+            '.fi-sidebar .fi-sidebar-group-collapse-btn > .fi-icon',
             '.fi-sidebar .fi-sidebar-group-dropdown-trigger-btn > .fi-icon',
+            '.fi-sidebar .fi-sidebar-group.fi-active .fi-sidebar-group-collapse-btn > .fi-icon',
             '.fi-sidebar .fi-sidebar-group.fi-active .fi-sidebar-group-dropdown-trigger-btn > .fi-icon',
             '.fi-sidebar .fi-sidebar-item-label',
             '.fi-sidebar .fi-sidebar-item-btn > .fi-icon',
@@ -241,6 +243,16 @@ class VisualIdentityTest extends TestCase
                 $theme,
                 "The sidebar URL item {$interaction} state must keep a dark background.",
             );
+
+            foreach (['collapse', 'dropdown-trigger'] as $groupControl) {
+                $selector = ".fi-sidebar .fi-sidebar-group-{$groupControl}-btn:{$interaction}";
+
+                $this->assertMatchesRegularExpression(
+                    '/'.preg_quote($selector, '/').'[^{}]*\{[^{}]*@apply[^;]*\bbg-white\/10\b/s',
+                    $theme,
+                    "The sidebar {$groupControl} group control {$interaction} state must keep a dark background.",
+                );
+            }
         }
     }
 

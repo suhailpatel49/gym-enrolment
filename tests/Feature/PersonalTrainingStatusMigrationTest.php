@@ -6,6 +6,7 @@ use Illuminate\Database\QueryException;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 class PersonalTrainingStatusMigrationTest extends TestCase
@@ -13,6 +14,17 @@ class PersonalTrainingStatusMigrationTest extends TestCase
     private string $databasePath;
 
     private string $previousDefaultConnection;
+
+    public static function invalidSessionCounts(): array
+    {
+        return [
+            'zero' => [0],
+            'negative integer' => [-1],
+            'fractional number' => [1.5],
+            'fractional numeric string' => ['1.5'],
+            'text' => ['sessions'],
+        ];
+    }
 
     protected function setUp(): void
     {
@@ -111,5 +123,69 @@ class PersonalTrainingStatusMigrationTest extends TestCase
             'Pending Client' => 1,
         ], DB::table('personal_training_members')->orderBy('client_name')->pluck('active', 'client_name')->all());
         $this->assertSame(4, DB::table('personal_training_members')->count());
+    }
+
+    #[DataProvider('invalidSessionCounts')]
+    public function test_sessions_migration_rejects_invalid_values_on_insert(int|float|string $numberOfSessions): void
+    {
+        $migration = require database_path('migrations/2026_09_21_101122_add_number_of_sessions_to_personal_training_members_table.php');
+        $migration->up();
+
+        $this->expectException(QueryException::class);
+        $this->expectExceptionMessage('Invalid personal training number of sessions');
+
+        DB::table('personal_training_members')->insert([
+            'client_name' => 'Invalid insert',
+            'start_date' => '2026-06-01',
+            'end_date' => '2026-06-30',
+            'number_of_sessions' => $numberOfSessions,
+        ]);
+    }
+
+    #[DataProvider('invalidSessionCounts')]
+    public function test_sessions_migration_rejects_invalid_values_on_update(int|float|string $numberOfSessions): void
+    {
+        $migration = require database_path('migrations/2026_09_21_101122_add_number_of_sessions_to_personal_training_members_table.php');
+        $migration->up();
+        $memberId = DB::table('personal_training_members')->insertGetId([
+            'client_name' => 'Invalid update',
+            'start_date' => '2026-06-01',
+            'end_date' => '2026-06-30',
+            'number_of_sessions' => null,
+        ]);
+
+        $this->expectException(QueryException::class);
+        $this->expectExceptionMessage('Invalid personal training number of sessions');
+
+        DB::table('personal_training_members')->where('id', $memberId)->update([
+            'number_of_sessions' => $numberOfSessions,
+        ]);
+    }
+
+    public function test_sessions_migration_accepts_null_and_positive_integers_and_removes_triggers_before_rollback(): void
+    {
+        $migration = require database_path('migrations/2026_09_21_101122_add_number_of_sessions_to_personal_training_members_table.php');
+        $migration->up();
+
+        foreach ([null, 1, 10_001] as $index => $numberOfSessions) {
+            $memberId = DB::table('personal_training_members')->insertGetId([
+                'client_name' => "Valid sessions {$index}",
+                'start_date' => '2026-06-01',
+                'end_date' => '2026-06-30',
+                'number_of_sessions' => $numberOfSessions,
+            ]);
+
+            DB::table('personal_training_members')->where('id', $memberId)->update([
+                'number_of_sessions' => $numberOfSessions,
+            ]);
+        }
+
+        $this->assertSame([null, 1, 10_001], DB::table('personal_training_members')->orderBy('id')->pluck('number_of_sessions')->all());
+        $this->assertSame(2, DB::table('sqlite_master')->where('type', 'trigger')->where('name', 'like', 'personal_training_members_sessions_%')->count());
+
+        $migration->down();
+
+        $this->assertSame(0, DB::table('sqlite_master')->where('type', 'trigger')->where('name', 'like', 'personal_training_members_sessions_%')->count());
+        $this->assertFalse(Schema::hasColumn('personal_training_members', 'number_of_sessions'));
     }
 }

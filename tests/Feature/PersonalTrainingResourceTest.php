@@ -216,7 +216,7 @@ class PersonalTrainingResourceTest extends TestCase
         $this->assertSame(1, PersonalTrainingMember::query()->count());
     }
 
-    public function test_number_of_sessions_is_optional_bounded_integer_and_visible_in_list_and_detail(): void
+    public function test_number_of_sessions_is_optional_positive_integer_without_an_arbitrary_upper_bound_and_visible_in_list_and_detail(): void
     {
         $this->actingAs(User::factory()->staff()->create());
         $trainer = Trainer::factory()->create();
@@ -242,16 +242,16 @@ class PersonalTrainingResourceTest extends TestCase
             ->call('create')
             ->assertHasFormErrors(['number_of_sessions']);
         Livewire::test(CreatePersonalTrainingMember::class)
-            ->fillForm([...$form, 'number_of_sessions' => 10_001])
+            ->fillForm([...$form, 'number_of_sessions' => 'sessions'])
             ->call('create')
             ->assertHasFormErrors(['number_of_sessions']);
         Livewire::test(CreatePersonalTrainingMember::class)
-            ->fillForm([...$form, 'number_of_sessions' => 37])
+            ->fillForm([...$form, 'number_of_sessions' => 10_001])
             ->call('create')
             ->assertHasNoFormErrors();
 
         $member = PersonalTrainingMember::query()->sole();
-        $this->assertSame(37, $member->number_of_sessions);
+        $this->assertSame(10_001, $member->number_of_sessions);
 
         Livewire::test(EditPersonalTrainingMember::class, ['record' => $member->id])
             ->fillForm(['number_of_sessions' => null, 'trainer_payment_paid' => true])
