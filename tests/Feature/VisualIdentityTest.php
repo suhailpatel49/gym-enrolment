@@ -207,6 +207,43 @@ class VisualIdentityTest extends TestCase
         }
     }
 
+    public function test_filament_theme_overrides_sidebar_descendant_foregrounds_and_interactions(): void
+    {
+        $theme = file_get_contents(resource_path('css/filament/admin/theme.css'));
+
+        foreach ([
+            '.fi-sidebar .fi-logo',
+            '.fi-sidebar .fi-sidebar-group-label',
+            '.fi-sidebar .fi-sidebar-group-btn > .fi-icon',
+            '.fi-sidebar .fi-sidebar-group-dropdown-trigger-btn > .fi-icon',
+            '.fi-sidebar .fi-sidebar-group.fi-active .fi-sidebar-group-dropdown-trigger-btn > .fi-icon',
+            '.fi-sidebar .fi-sidebar-item-label',
+            '.fi-sidebar .fi-sidebar-item-btn > .fi-icon',
+            '.fi-sidebar .fi-sidebar-item.fi-active > .fi-sidebar-item-btn > .fi-sidebar-item-label',
+            '.fi-sidebar .fi-sidebar-item.fi-active > .fi-sidebar-item-btn > .fi-icon',
+        ] as $sidebarSelector) {
+            $this->assertMatchesRegularExpression(
+                '/'.preg_quote($sidebarSelector, '/').'[^{}]*\{[^{}]*@apply[^;]*\btext-white\b/s',
+                $theme,
+                "The {$sidebarSelector} selector must force a readable sidebar foreground.",
+            );
+        }
+
+        $this->assertMatchesRegularExpression(
+            '/'.preg_quote('.fi-sidebar .fi-sidebar-header', '/').'[^{}]*\{[^{}]*@apply[^;]*\bbg-secondary\b/s',
+            $theme,
+            'The mobile sidebar brand must retain the dark sidebar background.',
+        );
+
+        foreach (['hover', 'focus-visible'] as $interaction) {
+            $this->assertMatchesRegularExpression(
+                '/'.preg_quote('.fi-sidebar .fi-sidebar-item.fi-sidebar-item-has-url > .fi-sidebar-item-btn:'.$interaction, '/').'[^{}]*\{[^{}]*@apply[^;]*\bbg-white\/10\b/s',
+                $theme,
+                "The sidebar URL item {$interaction} state must keep a dark background.",
+            );
+        }
+    }
+
     public function test_html_mail_is_branded_table_safe_and_keeps_dynamic_data(): void
     {
         $enrollment = Enrollment::factory()->create([

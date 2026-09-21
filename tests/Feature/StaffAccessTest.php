@@ -130,7 +130,7 @@ class StaffAccessTest extends TestCase
             ->get('/admin')
             ->assertOk()
             ->assertSee('Membership overview')
-            ->assertSee('Monitor personal training, memberships, and renewals.')
+            ->assertSee('Review overdue balances and upcoming membership renewals.')
             ->assertDontSee('Amount recorded as paid')
             ->assertDontSee('Outstanding balance');
 

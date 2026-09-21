@@ -58,6 +58,19 @@
         @apply bg-secondary text-white;
     }
 
+    .fi-sidebar .fi-sidebar-header {
+        @apply bg-secondary;
+    }
+
+    .fi-sidebar .fi-logo,
+    .fi-sidebar .fi-sidebar-group-label,
+    .fi-sidebar .fi-sidebar-group-btn > .fi-icon,
+    .fi-sidebar .fi-sidebar-group-dropdown-trigger-btn > .fi-icon,
+    .fi-sidebar .fi-sidebar-item-label,
+    .fi-sidebar .fi-sidebar-item-btn > .fi-icon {
+        @apply text-white;
+    }
+
     .fi-logo,
     .fi-header-heading,
     .fi-section-header-heading,
@@ -83,7 +96,18 @@
         @apply rounded-sm border-border shadow-none focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20;
     }
 
-    .fi-sidebar-item.fi-active > .fi-sidebar-item-btn {
+    .fi-sidebar .fi-sidebar-item.fi-active > .fi-sidebar-item-btn {
         @apply border-l-4 border-primary bg-white/10 text-white;
+    }
+
+    .fi-sidebar .fi-sidebar-group.fi-active .fi-sidebar-group-dropdown-trigger-btn > .fi-icon,
+    .fi-sidebar .fi-sidebar-item.fi-active > .fi-sidebar-item-btn > .fi-sidebar-item-label,
+    .fi-sidebar .fi-sidebar-item.fi-active > .fi-sidebar-item-btn > .fi-icon {
+        @apply text-white;
+    }
+
+    .fi-sidebar .fi-sidebar-item.fi-sidebar-item-has-url > .fi-sidebar-item-btn:hover,
+    .fi-sidebar .fi-sidebar-item.fi-sidebar-item-has-url > .fi-sidebar-item-btn:focus-visible {
+        @apply bg-white/10;
     }
 }

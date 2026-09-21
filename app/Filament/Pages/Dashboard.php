@@ -2,6 +2,8 @@
 
 namespace App\Filament\Pages;
 
+use App\Filament\Widgets\OverdueBalances;
+use App\Filament\Widgets\RenewalsDue;
 use Filament\Pages\Dashboard as BaseDashboard;
 
 class Dashboard extends BaseDashboard
@@ -10,11 +12,15 @@ class Dashboard extends BaseDashboard
 
     public function getSubheading(): ?string
     {
-        if (auth()->user()?->isAdmin()) {
-            return 'Monitor personal training, memberships, collections, balances, and renewals.';
-        }
+        return 'Review overdue balances and upcoming membership renewals.';
+    }
 
-        return 'Monitor personal training, memberships, and renewals.';
+    public function getWidgets(): array
+    {
+        return [
+            OverdueBalances::class,
+            RenewalsDue::class,
+        ];
     }
 
     public function getColumns(): int|array

@@ -3,7 +3,6 @@
 namespace Tests\Feature;
 
 use App\Enums\UserRole;
-use App\Filament\Pages\Dashboard;
 use App\Filament\Widgets\PersonalTrainingStats;
 use App\Models\PersonalTrainingMember;
 use App\Models\User;
@@ -42,7 +41,6 @@ class PersonalTrainingDashboardTest extends TestCase
         $this->assertSame([4, 3, 2], array_map(fn ($stat): int => (int) $stat->getValue(), $stats));
         $widget->assertSee('Active PT members')->assertSee('Trainer payments pending')->assertSee('Subscriptions expiring within 7 days');
         $widget->assertSee('Members manually marked active');
-        $this->assertContains(PersonalTrainingStats::class, app(Dashboard::class)->getWidgets());
         $this->get('/admin')->assertOk()->assertSee('Membership overview');
     }
 }

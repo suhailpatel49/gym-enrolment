@@ -32,21 +32,26 @@ class PendingApprovalsDashboardTest extends TestCase
     }
 
     #[DataProvider('roles')]
-    public function test_dashboard_has_no_pending_approval_queue_or_copy(string $role): void
+    public function test_dashboard_only_mounts_actionable_table_widgets(string $role): void
     {
         $this->actingAs(User::factory()->create(['role' => $role]));
 
         $this->get('/admin')
             ->assertOk()
             ->assertDontSee('pending review')
-            ->assertDontSee('Pending approvals');
+            ->assertDontSee('Pending approvals')
+            ->assertSee('Review overdue balances and upcoming membership renewals.');
 
         $this->assertSame([
-            EnrollmentStats::class,
-            PersonalTrainingStats::class,
             OverdueBalances::class,
             RenewalsDue::class,
         ], array_values(app(Dashboard::class)->getWidgets()));
+
+        Livewire::test(Dashboard::class)
+            ->assertDontSeeLivewire(EnrollmentStats::class)
+            ->assertDontSeeLivewire(PersonalTrainingStats::class)
+            ->assertSeeLivewire(OverdueBalances::class)
+            ->assertSeeLivewire(RenewalsDue::class);
     }
 
     #[DataProvider('roles')]
